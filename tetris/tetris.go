@@ -1,7 +1,9 @@
 package tetris
 
 import (
+	"fmt"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -82,8 +84,9 @@ func (g *Game) Tick(currentTime time.Time) {
 			}
 		}
 
-		g.score++
 		g.activeBlocks = g.newShape()
+		g.score += 1
+		g.checkForFullLines()
 	}
 
 	if !isBlocked {
@@ -100,7 +103,7 @@ func (g *Game) GetScore() int {
 }
 
 func (g *Game) GetBlocks() []Pos {
-	res := make([]Pos, 0, len(g.blocks) + len(g.activeBlocks))
+	res := make([]Pos, 0, len(g.blocks)+len(g.activeBlocks))
 	for k, exists := range g.blocks {
 		if exists {
 			res = append(res, k)
@@ -123,7 +126,7 @@ func (g *Game) IsGameOver() bool {
 }
 
 func (g *Game) newShape() []Pos {
-	shapes := [][]Pos {
+	shapes := [][]Pos{
 		{
 			{5, g.height},
 			{6, g.height},
@@ -136,7 +139,12 @@ func (g *Game) newShape() []Pos {
 			{5, g.height + 1},
 			{6, g.height + 1},
 		},
-
+		{
+			{5, g.height},
+			{5, g.height + 1},
+			{5, g.height + 2},
+			{5, g.height + 3},
+		},
 	}
 
 	return shapes[rand.Intn(len(shapes))]
@@ -144,4 +152,55 @@ func (g *Game) newShape() []Pos {
 
 func (g *Game) GetDimensions() (int, int) {
 	return g.width, g.height
+}
+
+func (g *Game) checkForFullLines() {
+	rows := map[int]map[int]bool{}
+	for block, exists := range g.blocks {
+		if !exists {
+			continue
+		}
+
+		if _, exists := rows[block.Y]; !exists {
+			rows[block.Y] = map[int]bool{}
+		}
+
+		rows[block.Y][block.X] = true
+	}
+
+	fullRows := []int{}
+	for row := range rows {
+		if len(rows[row]) == g.width {
+			fullRows = append(fullRows, row)
+		}
+	}
+
+	for i := len(fullRows) - 1; i >= 0; i-- {
+		for b := range g.blocks {
+			if b.Y == fullRows[i] {
+				delete(g.blocks, b)
+			}
+		}
+	}
+
+	sort.Ints(fullRows)
+	for _, fullRow := range fullRows {
+		for y := fullRow; y < g.height; y++ {
+			for x := 0; x < g.width; x++ {
+				p := Pos{x, y}
+				if g.blocks[p] {
+					delete(g.blocks, p)
+					g.blocks[Pos{p.X, p.Y-1}] = true
+				}
+			}
+
+		}
+	}
+
+	g.score += len(fullRows) * len(fullRows) * g.width
+
+	for i := range fullRows {
+		fmt.Printf("%d, ", fullRows[i])
+	}
+	println()
 }

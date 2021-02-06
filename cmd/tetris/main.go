@@ -50,9 +50,7 @@ func run() {
 	for !win.Closed() {
 		win.Clear(colornames.Black)
 		imd.Draw(win)
-		start := time.Now()
 		game.Tick(time.Now())
-		fmt.Printf("roundTime: %v\n", time.Since(start))
 
 		txt.Clear()
 		fmt.Fprintf(txt, "Score: %d", game.GetScore())
