@@ -1,8 +1,8 @@
 package tetris
 
 import (
+	"Tetrigo/tetris/shape"
 	"fmt"
-	"math/rand"
 	"sort"
 	"time"
 )
@@ -10,24 +10,21 @@ import (
 type Game struct {
 	score        int
 	nextTick     time.Time
-	blocks       map[Pos]bool
-	activeBlocks []Pos
+	blocks       map[shape.Pos]bool
+	activeBlocks shape.Shape
 	gameOver     bool
 	width        int
 	height       int
 }
-type Pos struct {
-	X, Y int
-}
 
-const tickLength = time.Millisecond * 200
+const tickLength = time.Millisecond * 400
 
 func New() Game {
 	g := Game{nextTick: time.Now().Add(tickLength)}
-	g.blocks = map[Pos]bool{}
+	g.blocks = map[shape.Pos]bool{}
 	g.width = 10
 	g.height = 20
-	g.activeBlocks = g.newShape()
+	g.activeBlocks = shape.NewShape(shape.Pos{5, g.height})
 	return g
 }
 
@@ -36,27 +33,35 @@ func (g *Game) Speed() {
 }
 
 func (g *Game) Right() {
-	for i := range g.activeBlocks {
-		if g.activeBlocks[i].X >= g.width-1 || g.collides(Pos{g.activeBlocks[i].X + 1, g.activeBlocks[i].Y}) {
+	for i := range g.activeBlocks.GetBlocks() {
+		if g.activeBlocks.GetBlocks()[i].X >= g.width-1 || g.collides(shape.Pos{g.activeBlocks.GetBlocks()[i].X + 1, g.activeBlocks.GetBlocks()[i].Y}) {
 			return
 		}
 	}
 
-	for i := range g.activeBlocks {
-		g.activeBlocks[i].X++
-	}
+	g.activeBlocks.Right()
 }
 
 func (g *Game) Left() {
-	for i := range g.activeBlocks {
-		if g.activeBlocks[i].X <= 0 || g.collides(Pos{g.activeBlocks[i].X - 1, g.activeBlocks[i].Y}) {
+	for i := range g.activeBlocks.GetBlocks() {
+		if g.activeBlocks.GetBlocks()[i].X <= 0 || g.collides(shape.Pos{g.activeBlocks.GetBlocks()[i].X - 1, g.activeBlocks.GetBlocks()[i].Y}) {
 			return
 		}
 	}
 
-	for i := range g.activeBlocks {
-		g.activeBlocks[i].X--
+	g.activeBlocks.Left()
+}
+
+func (g *Game) Rotate() {
+	rotated := g.activeBlocks.Rotated()
+	for i := range rotated{
+		if g.collides(rotated[i]) {
+			return
+		}
 	}
+
+	g.activeBlocks.Rotate()
+	return
 }
 
 func (g *Game) Tick(currentTime time.Time) {
@@ -65,34 +70,32 @@ func (g *Game) Tick(currentTime time.Time) {
 	}
 
 	isBlocked := false
-	for i := range g.activeBlocks {
-		if g.collides(Pos{g.activeBlocks[i].X, g.activeBlocks[i].Y - 1}) {
+	for i := range g.activeBlocks.GetBlocks() {
+		if g.collides(shape.Pos{g.activeBlocks.GetBlocks()[i].X, g.activeBlocks.GetBlocks()[i].Y - 1}) {
 			isBlocked = true
 			break
 		}
 	}
 
 	if isBlocked {
-		for i := range g.activeBlocks {
-			g.blocks[g.activeBlocks[i]] = true
+		for i := range g.activeBlocks.GetBlocks() {
+			g.blocks[g.activeBlocks.GetBlocks()[i]] = true
 		}
 
-		for i := range g.activeBlocks {
-			if g.activeBlocks[i].Y > g.height {
+		for i := range g.activeBlocks.GetBlocks() {
+			if g.activeBlocks.GetBlocks()[i].Y > g.height {
 				g.gameOver = true
 				return
 			}
 		}
 
-		g.activeBlocks = g.newShape()
+		g.activeBlocks = shape.NewShape(shape.Pos{5, g.height})
 		g.score += 1
 		g.checkForFullLines()
 	}
 
 	if !isBlocked {
-		for i := range g.activeBlocks {
-			g.activeBlocks[i].Y--
-		}
+		g.activeBlocks.Down()
 	}
 
 	g.nextTick = g.nextTick.Add(tickLength)
@@ -102,17 +105,17 @@ func (g *Game) GetScore() int {
 	return g.score
 }
 
-func (g *Game) GetBlocks() []Pos {
-	res := make([]Pos, 0, len(g.blocks)+len(g.activeBlocks))
+func (g *Game) GetBlocks() []shape.Pos {
+	res := make([]shape.Pos, 0, len(g.blocks)+len(g.activeBlocks.GetBlocks()))
 	for k, exists := range g.blocks {
 		if exists {
 			res = append(res, k)
 		}
 	}
-	return append(res, g.activeBlocks...)
+	return append(res, g.activeBlocks.GetBlocks()...)
 }
 
-func (g *Game) collides(currentBlock Pos) bool {
+func (g *Game) collides(currentBlock shape.Pos) bool {
 	if currentBlock.Y < 0 {
 		return true
 	}
@@ -123,31 +126,6 @@ func (g *Game) collides(currentBlock Pos) bool {
 
 func (g *Game) IsGameOver() bool {
 	return g.gameOver
-}
-
-func (g *Game) newShape() []Pos {
-	shapes := [][]Pos{
-		{
-			{5, g.height},
-			{6, g.height},
-			{4, g.height},
-			{5, g.height + 1},
-		},
-		{
-			{5, g.height},
-			{6, g.height},
-			{5, g.height + 1},
-			{6, g.height + 1},
-		},
-		{
-			{5, g.height},
-			{5, g.height + 1},
-			{5, g.height + 2},
-			{5, g.height + 3},
-		},
-	}
-
-	return shapes[rand.Intn(len(shapes))]
 }
 
 func (g *Game) GetDimensions() (int, int) {
@@ -168,7 +146,7 @@ func (g *Game) checkForFullLines() {
 		rows[block.Y][block.X] = true
 	}
 
-	fullRows := []int{}
+	var fullRows []int
 	for row := range rows {
 		if len(rows[row]) == g.width {
 			fullRows = append(fullRows, row)
@@ -187,10 +165,10 @@ func (g *Game) checkForFullLines() {
 	for _, fullRow := range fullRows {
 		for y := fullRow; y < g.height; y++ {
 			for x := 0; x < g.width; x++ {
-				p := Pos{x, y}
+				p := shape.Pos{x, y}
 				if g.blocks[p] {
 					delete(g.blocks, p)
-					g.blocks[Pos{p.X, p.Y-1}] = true
+					g.blocks[shape.Pos{p.X, p.Y - 1}] = true
 				}
 			}
 

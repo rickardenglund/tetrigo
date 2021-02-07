@@ -3,6 +3,7 @@ package main
 import (
 	"Tetrigo/fonts"
 	"Tetrigo/tetris"
+	"Tetrigo/tetris/shape"
 	"fmt"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -83,6 +84,12 @@ func run() {
 		if win.JustPressed(pixelgl.KeyRight) {
 			game.Right()
 		}
+		if win.JustPressed(pixelgl.KeyUp) {
+		    game.Rotate()
+		}
+		if win.JustPressed(pixelgl.KeyEnter) {
+			game = tetris.New()
+		}
 
 		win.Update()
 	}
@@ -91,7 +98,7 @@ func run() {
 
 const margin = 50
 
-func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, pos tetris.Pos) (pixel.Vec, float64, float64) {
+func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, pos shape.Pos) (pixel.Vec, float64, float64) {
 	boardLeft := float64(margin)
 	boardTop := bounds.H() - margin
 	boardBottom := float64(margin)
