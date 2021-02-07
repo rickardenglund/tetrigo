@@ -169,7 +169,9 @@ func (g *Game) checkForFullLines() {
 	}
 
 	sort.Ints(fullRows)
-	for _, fullRow := range fullRows {
+	for i := len(fullRows) - 1; i >= 0; i-- {
+		fullRow := fullRows[i]
+
 		for y := fullRow; y < g.height; y++ {
 			for x := 0; x < g.width; x++ {
 				p := shape.Pos{X: x, Y: y}
@@ -187,7 +189,9 @@ func (g *Game) checkForFullLines() {
 	for i := range fullRows {
 		fmt.Printf("%d, ", fullRows[i])
 	}
-	println()
+	if len(fullRows) > 0 {
+		println()
+	}
 }
 
 func (g *Game) newBlock() {
