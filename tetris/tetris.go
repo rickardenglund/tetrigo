@@ -120,6 +120,10 @@ func (g *Game) collides(currentBlock shape.Pos) bool {
 		return true
 	}
 
+	if currentBlock.X >= g.width || currentBlock.X < 0 {
+		return true
+	}
+
 	_, exists := g.blocks[currentBlock]
 	return exists
 }
