@@ -5,12 +5,13 @@ import (
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
 	"fmt"
+	"time"
+
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/faiface/pixel/text"
 	"golang.org/x/image/colornames"
-	"time"
 )
 
 func run() {
@@ -24,19 +25,20 @@ func run() {
 		panic(err)
 	}
 
-	imd := imdraw.New(nil)
-	imd.Color = colornames.Gray
-	imd.Push(pixel.V(margin, win.Bounds().H()-margin))
-	imd.Push(pixel.V(win.Bounds().Center().X-margin, win.Bounds().H()-margin))
-	imd.Push(pixel.V(win.Bounds().Center().X-margin, margin))
-	imd.Push(pixel.V(margin, margin))
-	imd.Polygon(5)
+	background := imdraw.New(nil)
+	background.Color = colornames.Gray
+	background.Push(pixel.V(margin, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin, margin))
+	background.Push(pixel.V(margin, margin))
+	background.Polygon(5)
 
-	imd.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
-	imd.Push(pixel.V(win.Bounds().Center().X, 0))
-	imd.Line(10)
+	background.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
+	background.Push(pixel.V(win.Bounds().Center().X, 0))
+	background.Line(10)
 
-	activeBlock := imdraw.New(nil)
+	gameImd := imdraw.New(nil)
+	nextImd := imdraw.New(nil)
 
 	font := fonts.GetFont()
 	atlas := text.NewAtlas(
@@ -45,35 +47,63 @@ func run() {
 	)
 	textPos := pixel.V(win.Bounds().Center().X+margin, win.Bounds().H()-margin)
 	txt := text.New(textPos, atlas)
+	nextBlockPos := pixel.V(600, 400)
+	nextBlockTxt := text.New(nextBlockPos, atlas)
 
 	game := tetris.New()
+	paused := false
 	gameWidth, gameHeight := game.GetDimensions()
 	for !win.Closed() {
 		win.Clear(colornames.Black)
-		imd.Draw(win)
-		game.Tick(time.Now())
+		background.Draw(win)
+		if !paused {
+			game.Tick(time.Now())
+		}
 
 		txt.Clear()
 		fmt.Fprintf(txt, "Score: %d", game.GetScore())
 		if game.IsGameOver() {
 			fmt.Fprintf(txt, "\nGame Over")
 		}
+		if paused {
+			fmt.Fprintf(txt, "\n\nPaused")
+		}
 		txt.Draw(win, pixel.IM)
 
 		// draw blocks
 		blocks := game.GetBlocks()
 		//fmt.Printf("blocks: %v\n", blocks)
-		activeBlock.Clear()
+		gameImd.Clear()
+		boxWidth, boxHeight := getBoxSize(gameWidth, gameHeight, win.Bounds())
 		for i := range blocks {
-			pos, boxWidth, boxHeight := getBlockPos(win.Bounds(), gameWidth, gameHeight, blocks[i])
-			activeBlock.Color = colornames.Red
-			activeBlock.Push(
+			pos := getBlockPos(win.Bounds(), gameWidth, gameHeight, boxWidth, blocks[i])
+			gameImd.Color = colornames.Red
+			gameImd.Push(
 				pos,
 				pos.Add(pixel.V(boxWidth, boxHeight)),
 			)
-			activeBlock.Rectangle(0)
+			gameImd.Rectangle(0)
 		}
-		activeBlock.Draw(win)
+		gameImd.Draw(win)
+
+		// Draw next block
+		ns := game.NextBlock()
+		points := getShapePoints(nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*2.5)), boxWidth, boxHeight, ns.GetBlocks())
+		nextImd.Clear()
+		i := 0
+		nextImd.Color = colornames.Greenyellow
+		for i < len(points) {
+			for j := 0; j < 4; j++ {
+				nextImd.Push(points[i])
+				i++
+			}
+			nextImd.Polygon(3)
+		}
+		nextImd.Draw(win)
+
+		nextBlockTxt.Clear()
+		fmt.Fprintf(nextBlockTxt, "Next")
+		nextBlockTxt.Draw(win, pixel.IM)
 
 		if win.Pressed(pixelgl.KeySpace) || win.Pressed(pixelgl.KeyDown) {
 			game.Speed()
@@ -85,10 +115,13 @@ func run() {
 			game.Right()
 		}
 		if win.JustPressed(pixelgl.KeyUp) {
-		    game.Rotate()
+			game.Rotate()
 		}
 		if win.JustPressed(pixelgl.KeyEnter) {
 			game = tetris.New()
+		}
+		if win.JustPressed(pixelgl.KeyP) {
+			paused = !paused
 		}
 
 		win.Update()
@@ -96,9 +129,23 @@ func run() {
 
 }
 
+func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Pos) []pixel.Vec {
+	res := make([]pixel.Vec, 0, len(blocks)*4)
+	for _, p := range blocks {
+		pv := pixel.Vec{X: float64(p.X) * boxWidth, Y: float64(p.Y) * boxHeight}.Add(base)
+		res = append(res,
+			pv,
+			pv.Add(pixel.V(boxWidth, 0)),
+			pv.Add(pixel.V(boxWidth, boxHeight)),
+			pv.Add(pixel.V(0, boxHeight)),
+		)
+	}
+	return res
+}
+
 const margin = 50
 
-func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, pos shape.Pos) (pixel.Vec, float64, float64) {
+func getBoxSize(gameWidth, gameHeight int, bounds pixel.Rect) (float64, float64) {
 	boardLeft := float64(margin)
 	boardTop := bounds.H() - margin
 	boardBottom := float64(margin)
@@ -110,10 +157,19 @@ func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, pos shape.Pos) (p
 	boxWidth := boardWidth / float64(gameWidth)
 	boxHeight := boardHeight / float64(gameHeight)
 
+	return boxWidth, boxHeight
+}
+
+func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, boxWidth float64, pos shape.Pos) pixel.Vec {
+	boardLeft := float64(margin)
+	boardTop := bounds.H() - margin
+	boardBottom := float64(margin)
+	boardRight := bounds.Center().X - margin
+
 	out := pixel.Vec{}
 	out.X = mapRange(float64(pos.X), 0, float64(gameWidth), boardLeft, boardRight)
 	out.Y = mapRange(float64(pos.Y), 0, float64(gameHeight), boardBottom, boardTop-boxWidth)
-	return out, boxWidth, boxHeight
+	return out
 }
 
 func mapRange(input, inputStart, inputEnd, outputStart, outputEnd float64) float64 {
