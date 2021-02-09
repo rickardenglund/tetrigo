@@ -5,6 +5,10 @@ import (
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
 	"fmt"
+	"image"
+	_ "image/png"
+	"math"
+	"os"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -24,6 +28,13 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
+
+	blockPic, err := loadPicture("assets/blocks/red2.png")
+	if err != nil {
+		panic(err)
+	}
+
+	blockSprite := pixel.NewSprite(blockPic, blockPic.Bounds())
 
 	background := imdraw.New(nil)
 	background.Color = colornames.Gray
@@ -53,6 +64,7 @@ func run() {
 	game := tetris.New()
 	paused := false
 	gameWidth, gameHeight := game.GetDimensions()
+	batch := pixel.NewBatch(&pixel.TrianglesData{}, blockPic)
 	for !win.Closed() {
 		win.Clear(colornames.Black)
 		background.Draw(win)
@@ -75,16 +87,25 @@ func run() {
 		//fmt.Printf("blocks: %v\n", blocks)
 		gameImd.Clear()
 		boxWidth, boxHeight := getBoxSize(gameWidth, gameHeight, win.Bounds())
+		boxScale := getBoxScale(boxWidth, boxHeight, blockSprite.Picture().Bounds())
+		batch.Clear()
 		for i := range blocks {
 			pos := getBlockPos(win.Bounds(), gameWidth, gameHeight, boxWidth, blocks[i])
-			gameImd.Color = colornames.Red
-			gameImd.Push(
-				pos,
-				pos.Add(pixel.V(boxWidth, boxHeight)),
-			)
-			gameImd.Rectangle(0)
+			pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
+			pos.X = math.Floor(pos.X)
+			pos.Y = math.Floor(pos.Y)
+			m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
+			m = m.Moved(pos)
+			blockSprite.Draw(batch, m)
+			//gameImd.Color = colornames.Red
+			//gameImd.Push(
+			//	pos,
+			//	pos.Add(pixel.V(boxWidth, boxHeight)),
+			//)
+			//gameImd.Rectangle(0)
 		}
-		gameImd.Draw(win)
+		batch.Draw(win)
+		//gameImd.Draw(win)
 
 		// Draw next block
 		ns := game.NextBlock()
@@ -129,6 +150,13 @@ func run() {
 
 }
 
+func getBoxScale(desiredWidth, desiredHeight float64, bounds pixel.Rect) pixel.Vec {
+	xScale := desiredWidth / bounds.W()
+	yScale := desiredHeight / bounds.H()
+
+	return pixel.V(xScale, yScale)
+}
+
 func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Pos) []pixel.Vec {
 	res := make([]pixel.Vec, 0, len(blocks)*4)
 	for _, p := range blocks {
@@ -168,7 +196,7 @@ func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, boxWidth float64,
 
 	out := pixel.Vec{}
 	out.X = mapRange(float64(pos.X), 0, float64(gameWidth), boardLeft, boardRight)
-	out.Y = mapRange(float64(pos.Y), 0, float64(gameHeight), boardBottom, boardTop-boxWidth)
+	out.Y = mapRange(float64(pos.Y), 0, float64(gameHeight)-2, boardBottom, boardTop-boxWidth)
 	return out
 }
 
@@ -178,4 +206,17 @@ func mapRange(input, inputStart, inputEnd, outputStart, outputEnd float64) float
 
 func main() {
 	pixelgl.Run(run)
+}
+
+func loadPicture(path string) (pixel.Picture, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, err
+	}
+	return pixel.PictureDataFromImage(img), nil
 }
