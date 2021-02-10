@@ -29,16 +29,15 @@ func run() {
 		panic(err)
 	}
 
-	blockPic, err := loadPicture("assets/blocks/red2.png")
+	blockSheet, err := loadPicture("assets/blocks.png")
 	if err != nil {
 		panic(err)
 	}
 
-	blockSprite := pixel.NewSprite(blockPic, blockPic.Bounds())
+	blockSprites := getBlockPrites(blockSheet)
 
 	background := createBackground(win)
 
-	gameImd := imdraw.New(nil)
 	nextImd := imdraw.New(nil)
 
 	font := fonts.GetFont()
@@ -55,7 +54,7 @@ func run() {
 	highScoreTxt := text.New(nextBlockPos.Add(pixel.V(0, -100)), atlas)
 
 	game := tetris.New()
-	batch := pixel.NewBatch(&pixel.TrianglesData{}, blockPic)
+	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
 	for !win.Closed() {
 
 		gameInfo := game.GetInfo()
@@ -64,95 +63,116 @@ func run() {
 		background.Draw(win)
 		game.Tick(time.Now())
 
-		txt.Clear()
-		fmt.Fprintf(txt, "Score: %d\n", game.GetScore())
-		fmt.Fprintf(txt, "Level: %d", gameInfo.Level)
-		if game.IsGameOver() {
-			fmt.Fprintf(txt, "\nGame Over")
-		}
-		if gameInfo.Paused {
-			fmt.Fprintf(txt, "\n\nPaused")
-		}
+		printHUD(txt, game, gameInfo)
 		txt.Draw(win, pixel.IM)
 
-		highScoreTxt.Clear()
-		fmt.Fprintf(highScoreTxt, "Score: ")
-		highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
-		levelPosX := highScoreTxt.Dot.X
-		fmt.Fprintf(highScoreTxt, "Level: \n")
-		for _, result := range game.Results {
-			fmt.Fprintf(highScoreTxt, "%d", result.Score)
-			highScoreTxt.Dot.X = levelPosX
-			fmt.Fprintf(highScoreTxt, "%d\n", result.Level)
-		}
+		printHighScore(highScoreTxt, game)
 		highScoreTxt.Draw(win, pixel.IM)
 
 		// draw blocks
-		blocks := game.GetBlocks()
-		//fmt.Printf("blocks: %v\n", blocks)
-		gameImd.Clear()
 		boxWidth, boxHeight := getBoxSize(gameInfo.Width, gameInfo.Height, win.Bounds())
-		boxScale := getBoxScale(boxWidth, boxHeight, blockSprite.Picture().Bounds())
-		batch.Clear()
-		for i := range blocks {
-			pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i])
-			pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
-			pos.X = math.Floor(pos.X)
-			pos.Y = math.Floor(pos.Y)
-			m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
-			m = m.Moved(pos)
-			blockSprite.Draw(batch, m)
-			//gameImd.Color = colornames.Red
-			//gameImd.Push(
-			//	pos,
-			//	pos.Add(pixel.V(boxWidth, boxHeight)),
-			//)
-			//gameImd.Rectangle(0)
-		}
-		batch.Draw(win)
-		//gameImd.Draw(win)
+		boxScale := getBoxScale(boxWidth, boxHeight, blockSprites[2].Frame().Size())
+		blocks := game.GetBlocks()
+		drawBlocks(blockBatch, blocks, win, gameInfo, boxWidth, boxHeight, boxScale, blockSprites)
+		blockBatch.Draw(win)
 
 		// Draw next block
 		ns := game.NextBlock()
-		points := getShapePoints(nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*2.5)), boxWidth, boxHeight, ns.GetBlocks())
-		nextImd.Clear()
-		i := 0
-		nextImd.Color = colornames.Greenyellow
-		for i < len(points) {
-			for j := 0; j < 4; j++ {
-				nextImd.Push(points[i])
-				i++
-			}
-			nextImd.Polygon(3)
-		}
+		drawNextBlock(nextBlockPos, boxWidth, nextBlockTxt, boxHeight, ns, nextImd)
 		nextImd.Draw(win)
-
 		nextBlockTxt.Clear()
 		fmt.Fprintf(nextBlockTxt, "Next")
 		nextBlockTxt.Draw(win, pixel.IM)
 
-		if win.Pressed(pixelgl.KeySpace) || win.Pressed(pixelgl.KeyDown) {
-			game.Speed()
-		}
-		if win.JustPressed(pixelgl.KeyLeft) {
-			game.Left()
-		}
-		if win.JustPressed(pixelgl.KeyRight) {
-			game.Right()
-		}
-		if win.JustPressed(pixelgl.KeyUp) {
-			game.Rotate()
-		}
+		handleInput(win, &game)
 		if win.JustPressed(pixelgl.KeyEnter) {
 			game = tetris.New()
-		}
-		if win.JustPressed(pixelgl.KeyP) {
-			game.TogglePaus()
 		}
 
 		win.Update()
 	}
 
+}
+
+func getBlockPrites(sheet pixel.Picture) []*pixel.Sprite {
+	const spriteWidth = 64
+	sprites := make([]*pixel.Sprite, 0, int(sheet.Bounds().W()/spriteWidth))
+	for x := 0.0; x < sheet.Bounds().W(); x += spriteWidth {
+		sprite := pixel.NewSprite(sheet, pixel.R(x, 0.0, x+spriteWidth, sheet.Bounds().H()))
+		sprites = append(sprites, sprite)
+	}
+
+	return sprites
+}
+
+func handleInput(win *pixelgl.Window, game *tetris.Game) {
+	if win.Pressed(pixelgl.KeySpace) || win.Pressed(pixelgl.KeyDown) {
+		game.Speed()
+	}
+	if win.JustPressed(pixelgl.KeyLeft) {
+		game.Left()
+	}
+	if win.JustPressed(pixelgl.KeyRight) {
+		game.Right()
+	}
+	if win.JustPressed(pixelgl.KeyUp) {
+		game.Rotate()
+	}
+	if win.JustPressed(pixelgl.KeyP) {
+		game.TogglePaus()
+	}
+}
+
+func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.Text, boxHeight float64, ns shape.Shape, nextImd *imdraw.IMDraw) {
+	points := getShapePoints(nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*2.5)), boxWidth, boxHeight, ns.GetBlocks())
+	nextImd.Clear()
+	i := 0
+	nextImd.Color = colornames.Greenyellow
+	for i < len(points) {
+		for j := 0; j < 4; j++ {
+			nextImd.Push(points[i])
+			i++
+		}
+		nextImd.Polygon(3)
+	}
+}
+
+func drawBlocks(batch *pixel.Batch, blocks []shape.Pos, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, boxHeight float64, boxScale pixel.Vec, blockSprites []*pixel.Sprite) {
+	batch.Clear()
+	for i := range blocks {
+		pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i])
+		pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
+		pos.X = math.Floor(pos.X)
+		pos.Y = math.Floor(pos.Y)
+		m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
+		m = m.Moved(pos)
+		blockSprites[2].Draw(batch, m)
+	}
+}
+
+func printHighScore(highScoreTxt *text.Text, game tetris.Game) {
+	highScoreTxt.Clear()
+	fmt.Fprintf(highScoreTxt, "Score: ")
+	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
+	levelPosX := highScoreTxt.Dot.X
+	fmt.Fprintf(highScoreTxt, "Level: \n")
+	for _, result := range game.Results {
+		fmt.Fprintf(highScoreTxt, "%d", result.Score)
+		highScoreTxt.Dot.X = levelPosX
+		fmt.Fprintf(highScoreTxt, "%d\n", result.Level)
+	}
+}
+
+func printHUD(txt *text.Text, game tetris.Game, gameInfo tetris.Info) {
+	txt.Clear()
+	fmt.Fprintf(txt, "Score: %d\n", game.GetScore())
+	fmt.Fprintf(txt, "Level: %d", gameInfo.Level)
+	if game.IsGameOver() {
+		fmt.Fprintf(txt, "\nGame Over")
+	}
+	if gameInfo.Paused {
+		fmt.Fprintf(txt, "\n\nPaused")
+	}
 }
 
 func createBackground(win *pixelgl.Window) *imdraw.IMDraw {
@@ -170,9 +190,9 @@ func createBackground(win *pixelgl.Window) *imdraw.IMDraw {
 	return background
 }
 
-func getBoxScale(desiredWidth, desiredHeight float64, bounds pixel.Rect) pixel.Vec {
-	xScale := desiredWidth / bounds.W()
-	yScale := desiredHeight / bounds.H()
+func getBoxScale(desiredWidth, desiredHeight float64, size pixel.Vec) pixel.Vec {
+	xScale := desiredWidth / size.X
+	yScale := desiredHeight / size.Y
 
 	return pixel.V(xScale, yScale)
 }
