@@ -36,17 +36,7 @@ func run() {
 
 	blockSprite := pixel.NewSprite(blockPic, blockPic.Bounds())
 
-	background := imdraw.New(nil)
-	background.Color = colornames.Gray
-	background.Push(pixel.V(margin, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin, margin))
-	background.Push(pixel.V(margin, margin))
-	background.Polygon(5)
-
-	background.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
-	background.Push(pixel.V(win.Bounds().Center().X, 0))
-	background.Line(10)
+	background := createBackground(win)
 
 	gameImd := imdraw.New(nil)
 	nextImd := imdraw.New(nil)
@@ -56,41 +46,56 @@ func run() {
 		font,
 		text.ASCII,
 	)
+
+	// init texts
 	textPos := pixel.V(win.Bounds().Center().X+margin, win.Bounds().H()-margin)
 	txt := text.New(textPos, atlas)
 	nextBlockPos := pixel.V(600, 400)
 	nextBlockTxt := text.New(nextBlockPos, atlas)
+	highScoreTxt := text.New(nextBlockPos.Add(pixel.V(0, -100)), atlas)
 
 	game := tetris.New()
-	paused := false
-	gameWidth, gameHeight := game.GetDimensions()
 	batch := pixel.NewBatch(&pixel.TrianglesData{}, blockPic)
 	for !win.Closed() {
+
+		gameInfo := game.GetInfo()
+
 		win.Clear(colornames.Black)
 		background.Draw(win)
-		if !paused {
-			game.Tick(time.Now())
-		}
+		game.Tick(time.Now())
 
 		txt.Clear()
-		fmt.Fprintf(txt, "Score: %d", game.GetScore())
+		fmt.Fprintf(txt, "Score: %d\n", game.GetScore())
+		fmt.Fprintf(txt, "Level: %d", gameInfo.Level)
 		if game.IsGameOver() {
 			fmt.Fprintf(txt, "\nGame Over")
 		}
-		if paused {
+		if gameInfo.Paused {
 			fmt.Fprintf(txt, "\n\nPaused")
 		}
 		txt.Draw(win, pixel.IM)
+
+		highScoreTxt.Clear()
+		fmt.Fprintf(highScoreTxt, "Score: ")
+		highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
+		levelPosX := highScoreTxt.Dot.X
+		fmt.Fprintf(highScoreTxt, "Level: \n")
+		for _, result := range game.Results {
+			fmt.Fprintf(highScoreTxt, "%d", result.Score)
+			highScoreTxt.Dot.X = levelPosX
+			fmt.Fprintf(highScoreTxt, "%d\n", result.Level)
+		}
+		highScoreTxt.Draw(win, pixel.IM)
 
 		// draw blocks
 		blocks := game.GetBlocks()
 		//fmt.Printf("blocks: %v\n", blocks)
 		gameImd.Clear()
-		boxWidth, boxHeight := getBoxSize(gameWidth, gameHeight, win.Bounds())
+		boxWidth, boxHeight := getBoxSize(gameInfo.Width, gameInfo.Height, win.Bounds())
 		boxScale := getBoxScale(boxWidth, boxHeight, blockSprite.Picture().Bounds())
 		batch.Clear()
 		for i := range blocks {
-			pos := getBlockPos(win.Bounds(), gameWidth, gameHeight, boxWidth, blocks[i])
+			pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i])
 			pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
 			pos.X = math.Floor(pos.X)
 			pos.Y = math.Floor(pos.Y)
@@ -142,12 +147,27 @@ func run() {
 			game = tetris.New()
 		}
 		if win.JustPressed(pixelgl.KeyP) {
-			paused = !paused
+			game.TogglePaus()
 		}
 
 		win.Update()
 	}
 
+}
+
+func createBackground(win *pixelgl.Window) *imdraw.IMDraw {
+	background := imdraw.New(nil)
+	background.Color = colornames.Gray
+	background.Push(pixel.V(margin, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin, margin))
+	background.Push(pixel.V(margin, margin))
+	background.Polygon(5)
+
+	background.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
+	background.Push(pixel.V(win.Bounds().Center().X, 0))
+	background.Line(10)
+	return background
 }
 
 func getBoxScale(desiredWidth, desiredHeight float64, bounds pixel.Rect) pixel.Vec {

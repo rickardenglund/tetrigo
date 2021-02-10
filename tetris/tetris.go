@@ -2,8 +2,10 @@ package tetris
 
 import (
 	"Tetrigo/tetris/shape"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"time"
 )
@@ -17,18 +19,42 @@ type Game struct {
 	width        int
 	height       int
 	nextKind     int
+	explodedRows int
+	Results      []GameResult
+	paused       bool
 }
 
-const tickLength = time.Millisecond * 400
+type Info struct {
+	Level    int
+	Width    int
+	Height   int
+	NextKind int
+	Paused   bool
+}
+
+const maxLevel = 20
+const highScoreFileName = "highscore.json"
 
 func New() Game {
-	g := Game{nextTick: time.Now().Add(tickLength)}
+	g := Game{}
+	g.nextTick = time.Now().Add(g.tickLength())
 	g.blocks = map[shape.Pos]bool{}
 	g.width = 10
 	g.height = 20
 	g.nextKind = rand.Int()
 	g.newBlock()
 	g.activeBlocks = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
+
+	if f, err := os.Open(highScoreFileName); err == nil {
+		defer f.Close()
+
+		var results []GameResult
+		err = json.NewDecoder(f).Decode(&results)
+		if err != nil {
+			fmt.Printf("Failed to read highscores: %v\n", err)
+		}
+		g.Results = results
+	}
 	return g
 }
 
@@ -68,6 +94,10 @@ func (g *Game) Rotate() {
 }
 
 func (g *Game) Tick(currentTime time.Time) {
+	if g.paused {
+		g.nextTick = time.Now().Add(g.tickLength())
+		return
+	}
 	if !currentTime.After(g.nextTick) || g.gameOver {
 		return
 	}
@@ -87,7 +117,7 @@ func (g *Game) Tick(currentTime time.Time) {
 
 		for i := range g.activeBlocks.GetBlocks() {
 			if g.activeBlocks.GetBlocks()[i].Y > g.height {
-				g.gameOver = true
+				g.setGameOver()
 				return
 			}
 		}
@@ -101,7 +131,7 @@ func (g *Game) Tick(currentTime time.Time) {
 		g.activeBlocks.Down()
 	}
 
-	g.nextTick = g.nextTick.Add(tickLength)
+	g.nextTick = g.nextTick.Add(g.tickLength())
 }
 
 func (g *Game) GetScore() int {
@@ -135,8 +165,16 @@ func (g *Game) IsGameOver() bool {
 	return g.gameOver
 }
 
-func (g *Game) GetDimensions() (int, int) {
-	return g.width, g.height
+func (g *Game) GetInfo() Info {
+	i := Info{
+		Height:   g.height,
+		Width:    g.width,
+		Level:    g.Level(),
+		NextKind: g.nextKind,
+		Paused:   g.paused,
+	}
+
+	return i
 }
 
 func (g *Game) checkForFullLines() {
@@ -189,9 +227,8 @@ func (g *Game) checkForFullLines() {
 	for i := range fullRows {
 		fmt.Printf("%d, ", fullRows[i])
 	}
-	if len(fullRows) > 0 {
-		println()
-	}
+
+	g.explodedRows += len(fullRows)
 }
 
 func (g *Game) newBlock() {
@@ -201,4 +238,57 @@ func (g *Game) newBlock() {
 
 func (g *Game) NextBlock() shape.Shape {
 	return shape.GetShape(g.nextKind, shape.Pos{})
+}
+
+func (g *Game) Level() int {
+	l := (g.explodedRows / 20) + 1
+	if l > maxLevel {
+		return maxLevel
+	}
+
+	return l
+}
+func (g *Game) tickLength() time.Duration {
+	tickLength := 600*time.Millisecond - time.Duration(g.Level())*time.Millisecond*25
+	return tickLength
+}
+
+type GameResult struct {
+	Score int
+	Level int
+}
+
+type ByScore []GameResult
+
+func (a ByScore) Len() int           { return len(a) }
+func (a ByScore) Less(i, j int) bool { return a[i].Score > a[j].Score }
+func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+func (g *Game) setGameOver() {
+	g.gameOver = true
+
+	result := GameResult{
+		Score: g.score,
+		Level: g.Level(),
+	}
+	g.Results = append(g.Results, result)
+	sort.Sort(ByScore(g.Results))
+	if len(g.Results) > 4 {
+		g.Results = g.Results[:5]
+	}
+
+	f, err := os.OpenFile(highScoreFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	err = json.NewEncoder(f).Encode(g.Results)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (g *Game) TogglePaus() {
+	g.paused = !g.paused
 }
