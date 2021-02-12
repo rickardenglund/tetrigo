@@ -19,6 +19,11 @@ import (
 	"golang.org/x/image/colornames"
 )
 
+type CtlState struct {
+	falling     bool
+	previousAge int
+}
+
 func run() {
 	windowCfg := pixelgl.WindowConfig{
 		Title:  "TetriGo",
@@ -35,7 +40,7 @@ func run() {
 		panic(err)
 	}
 
-	blockSprites := getBlockPrites(blockSheet)
+	blockSprites := getBlockSprites(blockSheet)
 
 	background := createBackground(win)
 
@@ -56,13 +61,14 @@ func run() {
 
 	game := tetris.New()
 	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
+	ctlState := CtlState{}
 	for !win.Closed() {
+		game.Tick(time.Now())
 
 		gameInfo := game.GetInfo()
 
 		win.Clear(colornames.Black)
 		background.Draw(win)
-		game.Tick(time.Now())
 
 		printHUD(txt, game, gameInfo)
 		txt.Draw(win, pixel.IM)
@@ -85,17 +91,18 @@ func run() {
 		fmt.Fprintf(nextBlockTxt, "Next")
 		nextBlockTxt.Draw(win, pixel.IM)
 
-		handleInput(win, &game)
+		ctlState.handleInput(win, &game, &gameInfo)
 		if win.JustPressed(pixelgl.KeyEnter) {
 			game = tetris.New()
 		}
 
+		win.SetTitle(fmt.Sprintf("age: %d", gameInfo.ActiveAge))
 		win.Update()
 	}
 
 }
 
-func getBlockPrites(sheet pixel.Picture) []*pixel.Sprite {
+func getBlockSprites(sheet pixel.Picture) []*pixel.Sprite {
 	const spriteWidth = 64
 	sprites := make([]*pixel.Sprite, 0, int(sheet.Bounds().W()/spriteWidth))
 	for x := 0.0; x < sheet.Bounds().W(); x += spriteWidth {
@@ -106,10 +113,20 @@ func getBlockPrites(sheet pixel.Picture) []*pixel.Sprite {
 	return sprites
 }
 
-func handleInput(win *pixelgl.Window, game *tetris.Game) {
-	if win.Pressed(pixelgl.KeySpace) || win.Pressed(pixelgl.KeyDown) {
+func (c *CtlState) handleInput(win *pixelgl.Window, game *tetris.Game, gi *tetris.Info) {
+	if win.JustPressed(pixelgl.KeyDown) || win.JustPressed(pixelgl.KeySpace) {
+		c.falling = true
+	}
+	if gi.ActiveAge < c.previousAge {
+		c.falling = false
+	}
+
+	c.previousAge = gi.ActiveAge
+
+	if win.Pressed(pixelgl.KeySpace) || win.Pressed(pixelgl.KeyDown) && c.falling {
 		game.Speed()
 	}
+
 	if win.JustPressed(pixelgl.KeyLeft) {
 		game.Left()
 	}

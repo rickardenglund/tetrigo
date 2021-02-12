@@ -25,11 +25,12 @@ type Game struct {
 }
 
 type Info struct {
-	Level    int
-	Width    int
-	Height   int
-	NextKind int
-	Paused   bool
+	Level     int
+	Width     int
+	Height    int
+	NextKind  int
+	Paused    bool
+	ActiveAge int
 }
 
 const maxLevel = 20
@@ -43,7 +44,6 @@ func New() Game {
 	g.height = 20
 	g.nextKind = rand.Int()
 	g.newBlock()
-	g.activeShape = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
 
 	if f, err := os.Open(highScoreFileName); err == nil {
 		defer f.Close()
@@ -63,6 +63,10 @@ func (g *Game) Speed() {
 }
 
 func (g *Game) Right() {
+	if g.paused || g.gameOver {
+		return
+	}
+
 	for i := range g.activeShape.GetBlocks() {
 		if g.activeShape.GetBlocks()[i].Pos.X >= g.width-1 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X + 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
@@ -73,6 +77,10 @@ func (g *Game) Right() {
 }
 
 func (g *Game) Left() {
+	if g.paused || g.gameOver {
+		return
+	}
+
 	for i := range g.activeShape.GetBlocks() {
 		if g.activeShape.GetBlocks()[i].Pos.X <= 0 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X - 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
@@ -102,25 +110,12 @@ func (g *Game) Tick(currentTime time.Time) {
 		return
 	}
 
-	isBlocked := false
-	for i := range g.activeShape.GetBlocks() {
-		if g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X, Y: g.activeShape.GetBlocks()[i].Pos.Y - 1}) {
-			isBlocked = true
-			break
-		}
-	}
+	isBlocked := g.activeIsBlocked()
 
 	if isBlocked {
 		for i := range g.activeShape.GetBlocks() {
 			b := g.activeShape.GetBlocks()[i]
 			g.blocks[b.Pos] = b
-		}
-
-		for i := range g.activeShape.GetBlocks() {
-			if g.activeShape.GetBlocks()[i].Pos.Y > g.height {
-				g.setGameOver()
-				return
-			}
 		}
 
 		g.newBlock()
@@ -133,6 +128,18 @@ func (g *Game) Tick(currentTime time.Time) {
 	}
 
 	g.nextTick = g.nextTick.Add(g.tickLength())
+	g.activeShape.Age++
+}
+
+func (g *Game) activeIsBlocked() bool {
+	isBlocked := false
+	for i := range g.activeShape.GetBlocks() {
+		if g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X, Y: g.activeShape.GetBlocks()[i].Pos.Y - 1}) {
+			isBlocked = true
+			break
+		}
+	}
+	return isBlocked
 }
 
 func (g *Game) GetScore() int {
@@ -166,11 +173,12 @@ func (g *Game) IsGameOver() bool {
 
 func (g *Game) GetInfo() Info {
 	i := Info{
-		Height:   g.height,
-		Width:    g.width,
-		Level:    g.Level(),
-		NextKind: g.nextKind,
-		Paused:   g.paused,
+		Height:    g.height,
+		Width:     g.width,
+		Level:     g.Level(),
+		NextKind:  g.nextKind,
+		Paused:    g.paused,
+		ActiveAge: g.activeShape.Age,
 	}
 
 	return i
@@ -231,7 +239,11 @@ func rowScore(nRows, width, level int) int {
 }
 
 func (g *Game) newBlock() {
-	g.activeShape = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
+	g.activeShape = shape.GetShape(g.nextKind, shape.Pos{X: g.width / 2, Y: g.height})
+	if g.activeIsBlocked() {
+		g.setGameOver()
+	}
+
 	g.nextKind = rand.Int()
 }
 

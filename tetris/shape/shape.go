@@ -4,6 +4,7 @@ type Shape struct {
 	pos      Pos
 	kind     int
 	rotation int
+	Age      int
 }
 
 type Block struct {
