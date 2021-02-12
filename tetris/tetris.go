@@ -124,7 +124,7 @@ func (g *Game) Tick(currentTime time.Time) {
 		}
 
 		g.newBlock()
-		g.score += 1
+		g.score += g.Level()
 		g.checkForFullLines()
 	}
 
@@ -219,13 +219,15 @@ func (g *Game) checkForFullLines() {
 		}
 	}
 
-	g.score += len(fullRows) * len(fullRows) * g.width
-
-	for i := range fullRows {
-		fmt.Printf("%d, ", fullRows[i])
-	}
+	g.score += rowScore(len(fullRows), g.width, g.Level())
 
 	g.explodedRows += len(fullRows)
+	fmt.Printf("nRows: %d\n", g.explodedRows)
+}
+
+func rowScore(nRows, width, level int) int {
+	s := nRows * nRows * width * level
+	return s
 }
 
 func (g *Game) newBlock() {

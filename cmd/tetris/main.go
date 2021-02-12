@@ -8,6 +8,7 @@ import (
 	"image"
 	_ "image/png"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 
@@ -245,6 +246,7 @@ func mapRange(input, inputStart, inputEnd, outputStart, outputEnd float64) float
 }
 
 func main() {
+	rand.Seed(time.Now().Unix())
 	pixelgl.Run(run)
 }
 
