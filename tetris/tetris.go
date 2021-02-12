@@ -101,17 +101,18 @@ func (g *Game) Rotate() {
 	g.activeShape.Rotate()
 }
 
-func (g *Game) Tick(currentTime time.Time) {
+func (g *Game) Tick(currentTime time.Time) []shape.Block {
 	if g.paused {
 		g.nextTick = time.Now().Add(g.tickLength())
-		return
+		return nil
 	}
 	if !currentTime.After(g.nextTick) || g.gameOver {
-		return
+		return nil
 	}
 
 	isBlocked := g.activeIsBlocked()
 
+	var explodedBlocks []shape.Block
 	if isBlocked {
 		for i := range g.activeShape.GetBlocks() {
 			b := g.activeShape.GetBlocks()[i]
@@ -120,7 +121,7 @@ func (g *Game) Tick(currentTime time.Time) {
 
 		g.newBlock()
 		g.score += g.Level()
-		g.checkForFullLines()
+		explodedBlocks = g.checkForFullLines()
 	}
 
 	if !isBlocked {
@@ -129,6 +130,8 @@ func (g *Game) Tick(currentTime time.Time) {
 
 	g.nextTick = g.nextTick.Add(g.tickLength())
 	g.activeShape.Age++
+
+	return explodedBlocks
 }
 
 func (g *Game) activeIsBlocked() bool {
@@ -184,8 +187,10 @@ func (g *Game) GetInfo() Info {
 	return i
 }
 
-func (g *Game) checkForFullLines() {
+func (g *Game) checkForFullLines() []shape.Block {
 	rows := map[int]map[int]bool{}
+	var explodedBlocks []shape.Block
+
 	for pos := range g.blocks {
 		if _, exists := rows[pos.Y]; !exists {
 			rows[pos.Y] = map[int]bool{}
@@ -198,6 +203,9 @@ func (g *Game) checkForFullLines() {
 	for row := range rows {
 		if len(rows[row]) == g.width {
 			fullRows = append(fullRows, row)
+			for x := 0; x < g.width; x++ {
+				explodedBlocks = append(explodedBlocks, g.blocks[shape.Pos{X: x, Y: row}])
+			}
 		}
 	}
 
@@ -231,6 +239,8 @@ func (g *Game) checkForFullLines() {
 
 	g.explodedRows += len(fullRows)
 	fmt.Printf("nRows: %d\n", g.explodedRows)
+
+	return explodedBlocks
 }
 
 func rowScore(nRows, width, level int) int {

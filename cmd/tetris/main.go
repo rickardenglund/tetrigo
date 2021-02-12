@@ -24,6 +24,14 @@ type CtlState struct {
 	previousAge int
 }
 
+type FallingBlock struct {
+	pos      pixel.Vec
+	rotation float64
+	kind     int
+	xs       float64
+	ys       float64
+}
+
 func run() {
 	windowCfg := pixelgl.WindowConfig{
 		Title:  "TetriGo",
@@ -52,6 +60,9 @@ func run() {
 		text.ASCII,
 	)
 
+	bcnt := 0
+	fallingBlocks := map[int]FallingBlock{}
+
 	// init texts
 	textPos := pixel.V(win.Bounds().Center().X+margin, win.Bounds().H()-margin)
 	txt := text.New(textPos, atlas)
@@ -62,10 +73,32 @@ func run() {
 	game := tetris.New()
 	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
 	ctlState := CtlState{}
+	maxRenderTime := time.Duration(0)
 	for !win.Closed() {
-		game.Tick(time.Now())
-
+		startRender := time.Now()
+		explodedBlocks := game.Tick(startRender)
 		gameInfo := game.GetInfo()
+
+		boxWidth, boxHeight := getBoxSize(gameInfo.Width, gameInfo.Height, win.Bounds())
+		boxScale := getBoxScale(boxWidth, boxHeight, blockSprites[2].Frame().Size())
+
+		if len(explodedBlocks) > 0 {
+			fmt.Printf("b: %v\n", explodedBlocks)
+			for _, b := range explodedBlocks {
+				fb := FallingBlock{
+					pos:      getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, b.Pos),
+					rotation: 0,
+					kind:     b.Kind,
+					xs:       rand.Float64()*-2 + 1,
+					ys:       rand.Float64()*2 - 1,
+				}
+
+				bcnt++
+				fallingBlocks[bcnt] = fb
+			}
+		}
+
+		movaFallingBlocks(fallingBlocks)
 
 		win.Clear(colornames.Black)
 		background.Draw(win)
@@ -76,9 +109,14 @@ func run() {
 		printHighScore(highScoreTxt, game)
 		highScoreTxt.Draw(win, pixel.IM)
 
+		blockBatch.Clear()
+		for _, v := range fallingBlocks {
+			m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
+			m = m.Moved(v.pos)
+			blockSprites[v.kind].Draw(blockBatch, m)
+		}
+
 		// draw blocks
-		boxWidth, boxHeight := getBoxSize(gameInfo.Width, gameInfo.Height, win.Bounds())
-		boxScale := getBoxScale(boxWidth, boxHeight, blockSprites[2].Frame().Size())
 		blocks := game.GetBlocks()
 		drawBlocks(blockBatch, blocks, win, gameInfo, boxWidth, boxHeight, boxScale, blockSprites)
 		blockBatch.Draw(win)
@@ -96,10 +134,27 @@ func run() {
 			game = tetris.New()
 		}
 
-		win.SetTitle(fmt.Sprintf("age: %d", gameInfo.ActiveAge))
+		rt := time.Since(startRender)
+		if rt > maxRenderTime {
+			maxRenderTime = rt
+		}
+		win.SetTitle(fmt.Sprintf("age: %d, max render time: %v", gameInfo.ActiveAge, maxRenderTime))
 		win.Update()
 	}
 
+}
+
+func movaFallingBlocks(blocks map[int]FallingBlock) {
+	for k, v := range blocks {
+		v.ys -= 1.0
+		v.xs *= 0.9
+		v.pos.Y += v.ys
+		v.pos.X += v.xs
+		blocks[k] = v
+		if v.pos.Y < 0 {
+			delete(blocks, k)
+		}
+	}
 }
 
 func getBlockSprites(sheet pixel.Picture) []*pixel.Sprite {
@@ -156,7 +211,6 @@ func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.
 }
 
 func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, boxHeight float64, boxScale pixel.Vec, blockSprites []*pixel.Sprite) {
-	batch.Clear()
 	for i := range blocks {
 		pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i].Pos)
 		pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
