@@ -137,16 +137,16 @@ func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.
 	}
 }
 
-func drawBlocks(batch *pixel.Batch, blocks []shape.Pos, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, boxHeight float64, boxScale pixel.Vec, blockSprites []*pixel.Sprite) {
+func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, boxHeight float64, boxScale pixel.Vec, blockSprites []*pixel.Sprite) {
 	batch.Clear()
 	for i := range blocks {
-		pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i])
+		pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i].Pos)
 		pos = pos.Add(pixel.V(boxWidth/2, boxHeight/2))
 		pos.X = math.Floor(pos.X)
 		pos.Y = math.Floor(pos.Y)
 		m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
 		m = m.Moved(pos)
-		blockSprites[2].Draw(batch, m)
+		blockSprites[blocks[i].Kind].Draw(batch, m)
 	}
 }
 
@@ -197,10 +197,10 @@ func getBoxScale(desiredWidth, desiredHeight float64, size pixel.Vec) pixel.Vec 
 	return pixel.V(xScale, yScale)
 }
 
-func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Pos) []pixel.Vec {
+func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Block) []pixel.Vec {
 	res := make([]pixel.Vec, 0, len(blocks)*4)
-	for _, p := range blocks {
-		pv := pixel.Vec{X: float64(p.X) * boxWidth, Y: float64(p.Y) * boxHeight}.Add(base)
+	for _, block := range blocks {
+		pv := pixel.Vec{X: float64(block.Pos.X) * boxWidth, Y: float64(block.Pos.Y) * boxHeight}.Add(base)
 		res = append(res,
 			pv,
 			pv.Add(pixel.V(boxWidth, 0)),

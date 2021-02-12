@@ -13,8 +13,8 @@ import (
 type Game struct {
 	score        int
 	nextTick     time.Time
-	blocks       map[shape.Pos]bool
-	activeBlocks shape.Shape
+	blocks       map[shape.Pos]shape.Block
+	activeShape  shape.Shape
 	gameOver     bool
 	width        int
 	height       int
@@ -38,12 +38,12 @@ const highScoreFileName = "highscore.json"
 func New() Game {
 	g := Game{}
 	g.nextTick = time.Now().Add(g.tickLength())
-	g.blocks = map[shape.Pos]bool{}
+	g.blocks = map[shape.Pos]shape.Block{}
 	g.width = 10
 	g.height = 20
 	g.nextKind = rand.Int()
 	g.newBlock()
-	g.activeBlocks = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
+	g.activeShape = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
 
 	if f, err := os.Open(highScoreFileName); err == nil {
 		defer f.Close()
@@ -63,34 +63,34 @@ func (g *Game) Speed() {
 }
 
 func (g *Game) Right() {
-	for i := range g.activeBlocks.GetBlocks() {
-		if g.activeBlocks.GetBlocks()[i].X >= g.width-1 || g.collides(shape.Pos{X: g.activeBlocks.GetBlocks()[i].X + 1, Y: g.activeBlocks.GetBlocks()[i].Y}) {
+	for i := range g.activeShape.GetBlocks() {
+		if g.activeShape.GetBlocks()[i].Pos.X >= g.width-1 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X + 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
 		}
 	}
 
-	g.activeBlocks.Right()
+	g.activeShape.Right()
 }
 
 func (g *Game) Left() {
-	for i := range g.activeBlocks.GetBlocks() {
-		if g.activeBlocks.GetBlocks()[i].X <= 0 || g.collides(shape.Pos{X: g.activeBlocks.GetBlocks()[i].X - 1, Y: g.activeBlocks.GetBlocks()[i].Y}) {
+	for i := range g.activeShape.GetBlocks() {
+		if g.activeShape.GetBlocks()[i].Pos.X <= 0 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X - 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
 		}
 	}
 
-	g.activeBlocks.Left()
+	g.activeShape.Left()
 }
 
 func (g *Game) Rotate() {
-	rotated := g.activeBlocks.Rotated()
+	rotated := g.activeShape.Rotated()
 	for i := range rotated {
-		if g.collides(rotated[i]) {
+		if g.collides(rotated[i].Pos) {
 			return
 		}
 	}
 
-	g.activeBlocks.Rotate()
+	g.activeShape.Rotate()
 }
 
 func (g *Game) Tick(currentTime time.Time) {
@@ -103,20 +103,21 @@ func (g *Game) Tick(currentTime time.Time) {
 	}
 
 	isBlocked := false
-	for i := range g.activeBlocks.GetBlocks() {
-		if g.collides(shape.Pos{X: g.activeBlocks.GetBlocks()[i].X, Y: g.activeBlocks.GetBlocks()[i].Y - 1}) {
+	for i := range g.activeShape.GetBlocks() {
+		if g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X, Y: g.activeShape.GetBlocks()[i].Pos.Y - 1}) {
 			isBlocked = true
 			break
 		}
 	}
 
 	if isBlocked {
-		for i := range g.activeBlocks.GetBlocks() {
-			g.blocks[g.activeBlocks.GetBlocks()[i]] = true
+		for i := range g.activeShape.GetBlocks() {
+			b := g.activeShape.GetBlocks()[i]
+			g.blocks[b.Pos] = b
 		}
 
-		for i := range g.activeBlocks.GetBlocks() {
-			if g.activeBlocks.GetBlocks()[i].Y > g.height {
+		for i := range g.activeShape.GetBlocks() {
+			if g.activeShape.GetBlocks()[i].Pos.Y > g.height {
 				g.setGameOver()
 				return
 			}
@@ -128,7 +129,7 @@ func (g *Game) Tick(currentTime time.Time) {
 	}
 
 	if !isBlocked {
-		g.activeBlocks.Down()
+		g.activeShape.Down()
 	}
 
 	g.nextTick = g.nextTick.Add(g.tickLength())
@@ -138,14 +139,12 @@ func (g *Game) GetScore() int {
 	return g.score
 }
 
-func (g *Game) GetBlocks() []shape.Pos {
-	res := make([]shape.Pos, 0, len(g.blocks)+len(g.activeBlocks.GetBlocks()))
-	for k, exists := range g.blocks {
-		if exists {
-			res = append(res, k)
-		}
+func (g *Game) GetBlocks() []shape.Block {
+	res := make([]shape.Block, 0, len(g.blocks)+len(g.activeShape.GetBlocks()))
+	for _, block := range g.blocks {
+		res = append(res, block)
 	}
-	return append(res, g.activeBlocks.GetBlocks()...)
+	return append(res, g.activeShape.GetBlocks()...)
 }
 
 func (g *Game) collides(currentBlock shape.Pos) bool {
@@ -179,16 +178,12 @@ func (g *Game) GetInfo() Info {
 
 func (g *Game) checkForFullLines() {
 	rows := map[int]map[int]bool{}
-	for block, exists := range g.blocks {
-		if !exists {
-			continue
+	for pos := range g.blocks {
+		if _, exists := rows[pos.Y]; !exists {
+			rows[pos.Y] = map[int]bool{}
 		}
 
-		if _, exists := rows[block.Y]; !exists {
-			rows[block.Y] = map[int]bool{}
-		}
-
-		rows[block.Y][block.X] = true
+		rows[pos.Y][pos.X] = true
 	}
 
 	var fullRows []int
@@ -213,9 +208,11 @@ func (g *Game) checkForFullLines() {
 		for y := fullRow; y < g.height; y++ {
 			for x := 0; x < g.width; x++ {
 				p := shape.Pos{X: x, Y: y}
-				if g.blocks[p] {
+				b, exists := g.blocks[p]
+				if exists {
 					delete(g.blocks, p)
-					g.blocks[shape.Pos{X: p.X, Y: p.Y - 1}] = true
+					newPos := shape.Pos{X: p.X, Y: p.Y - 1}
+					g.blocks[newPos] = shape.Block{Pos: newPos, Kind: b.Kind}
 				}
 			}
 
@@ -232,7 +229,7 @@ func (g *Game) checkForFullLines() {
 }
 
 func (g *Game) newBlock() {
-	g.activeBlocks = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
+	g.activeShape = shape.GetShape(g.nextKind, shape.Pos{X: 5, Y: g.height})
 	g.nextKind = rand.Int()
 }
 

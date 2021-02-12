@@ -6,15 +6,20 @@ type Shape struct {
 	rotation int
 }
 
-func (s *Shape) GetBlocks() []Pos {
+type Block struct {
+	Pos  Pos
+	Kind int
+}
+
+func (s *Shape) GetBlocks() []Block {
 	return s.getBlocks(s.rotation)
 }
 
-func (s *Shape) getBlocks(rotation int) []Pos {
-	blocks := make([]Pos, 0, len(tetronimos[s.kind]))
+func (s *Shape) getBlocks(rotation int) []Block {
+	blocks := make([]Block, 0, len(tetronimos[s.kind]))
 	for _, p := range tetronimos[s.kind][rotation] {
 		newPos := p.Add(s.pos)
-		blocks = append(blocks, newPos)
+		blocks = append(blocks, Block{Pos: newPos, Kind: s.kind})
 	}
 
 	return blocks
@@ -36,7 +41,7 @@ func (s *Shape) Rotate() {
 	s.rotation = (s.rotation + 1) % 4
 }
 
-func (s *Shape) Rotated() []Pos {
+func (s *Shape) Rotated() []Block {
 	return s.getBlocks((s.rotation + 1) % 4)
 }
 
