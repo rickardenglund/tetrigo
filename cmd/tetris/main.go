@@ -73,7 +73,9 @@ func run() {
 	game := tetris.New()
 	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
 	ctlState := CtlState{}
-	maxRenderTime := time.Duration(0)
+	frames := 0
+	ticker := time.NewTicker(time.Second)
+
 	for !win.Closed() {
 		startRender := time.Now()
 		explodedBlocks := game.Tick(startRender)
@@ -134,11 +136,13 @@ func run() {
 			game = tetris.New()
 		}
 
-		rt := time.Since(startRender)
-		if rt > maxRenderTime {
-			maxRenderTime = rt
+		select {
+		case <-ticker.C:
+			win.SetTitle(fmt.Sprintf("fps: %v", frames))
+			frames = 0
+		default:
 		}
-		win.SetTitle(fmt.Sprintf("age: %d, max render time: %v", gameInfo.ActiveAge, maxRenderTime))
+		frames++
 		win.Update()
 	}
 
