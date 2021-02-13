@@ -238,7 +238,6 @@ func (g *Game) checkForFullLines() []shape.Block {
 	g.score += rowScore(len(fullRows), g.width, g.Level())
 
 	g.explodedRows += len(fullRows)
-	fmt.Printf("nRows: %d\n", g.explodedRows)
 
 	return explodedBlocks
 }
@@ -310,6 +309,6 @@ func (g *Game) setGameOver() {
 	}
 }
 
-func (g *Game) TogglePaus() {
+func (g *Game) TogglePause() {
 	g.paused = !g.paused
 }

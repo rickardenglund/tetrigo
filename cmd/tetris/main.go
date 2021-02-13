@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Tetrigo/cmd/tetris/hud"
 	"Tetrigo/fonts"
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
@@ -65,10 +66,10 @@ func run() {
 
 	// init texts
 	textPos := pixel.V(win.Bounds().Center().X+margin, win.Bounds().H()-margin)
-	txt := text.New(textPos, atlas)
 	nextBlockPos := pixel.V(600, 400)
 	nextBlockTxt := text.New(nextBlockPos, atlas)
-	highScoreTxt := text.New(nextBlockPos.Add(pixel.V(0, -100)), atlas)
+
+	hud := hud.New(textPos, atlas, nextBlockPos.Add(pixel.V(0, -100)))
 
 	game := tetris.New()
 	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
@@ -105,11 +106,7 @@ func run() {
 		win.Clear(colornames.Black)
 		background.Draw(win)
 
-		printHUD(txt, game, gameInfo)
-		txt.Draw(win, pixel.IM)
-
-		printHighScore(highScoreTxt, game)
-		highScoreTxt.Draw(win, pixel.IM)
+		hud.DrawHUD(win, game, gameInfo)
 
 		blockBatch.Clear()
 		for _, v := range fallingBlocks {
@@ -196,7 +193,7 @@ func (c *CtlState) handleInput(win *pixelgl.Window, game *tetris.Game, gi *tetri
 		game.Rotate()
 	}
 	if win.JustPressed(pixelgl.KeyP) {
-		game.TogglePaus()
+		game.TogglePause()
 	}
 }
 
@@ -223,31 +220,6 @@ func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, g
 		m := pixel.IM.ScaledXY(pixel.ZV, boxScale)
 		m = m.Moved(pos)
 		blockSprites[blocks[i].Kind].Draw(batch, m)
-	}
-}
-
-func printHighScore(highScoreTxt *text.Text, game tetris.Game) {
-	highScoreTxt.Clear()
-	fmt.Fprintf(highScoreTxt, "Score: ")
-	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
-	levelPosX := highScoreTxt.Dot.X
-	fmt.Fprintf(highScoreTxt, "Level: \n")
-	for _, result := range game.Results {
-		fmt.Fprintf(highScoreTxt, "%d", result.Score)
-		highScoreTxt.Dot.X = levelPosX
-		fmt.Fprintf(highScoreTxt, "%d\n", result.Level)
-	}
-}
-
-func printHUD(txt *text.Text, game tetris.Game, gameInfo tetris.Info) {
-	txt.Clear()
-	fmt.Fprintf(txt, "Score: %d\n", game.GetScore())
-	fmt.Fprintf(txt, "Level: %d", gameInfo.Level)
-	if game.IsGameOver() {
-		fmt.Fprintf(txt, "\nGame Over")
-	}
-	if gameInfo.Paused {
-		fmt.Fprintf(txt, "\n\nPaused")
 	}
 }
 
