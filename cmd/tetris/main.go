@@ -2,6 +2,7 @@ package main
 
 import (
 	"Tetrigo/cmd/tetris/hud"
+	"Tetrigo/cmd/tetris/sound"
 	"Tetrigo/fonts"
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
@@ -34,6 +35,9 @@ type FallingBlock struct {
 }
 
 func run() {
+	sounds := sound.New()
+	defer sounds.Close()
+
 	windowCfg := pixelgl.WindowConfig{
 		Title:  "TetriGo",
 		Bounds: pixel.R(0, 0, 1024, 768),
@@ -86,7 +90,7 @@ func run() {
 		boxScale := getBoxScale(boxWidth, boxHeight, blockSprites[2].Frame().Size())
 
 		if len(explodedBlocks) > 0 {
-			fmt.Printf("b: %v\n", explodedBlocks)
+			sounds.Click()
 			for _, b := range explodedBlocks {
 				fb := FallingBlock{
 					pos:      getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, b.Pos),
