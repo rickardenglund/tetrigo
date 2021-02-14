@@ -2,8 +2,8 @@ package main
 
 import (
 	"Tetrigo/cmd/tetris/hud"
-	"Tetrigo/cmd/tetris/sound"
 	"Tetrigo/fonts"
+	"Tetrigo/sound"
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
 	"Tetrigo/util"
@@ -86,9 +86,8 @@ func run() {
 		boxWidth, boxHeight := getBoxSize(gameInfo.Width, gameInfo.Height, win.Bounds())
 		boxScale := getBoxScale(boxWidth, boxHeight, blockSprites[2].Frame().Size())
 
-		if len(explodedBlocks) > 0 {
-			sounds.Click()
-		}
+		handleSound(&ctlState, gameInfo, explodedBlocks, sounds)
+
 		handleFallingBlocks(explodedBlocks, sounds, win, gameInfo, boxWidth, blockIDCounter, fallingBlocks)
 
 		win.Clear(colornames.Black)
@@ -122,6 +121,18 @@ func run() {
 		win.Update()
 	}
 
+}
+
+func handleSound(game *CtlState, info tetris.Info, explodedBlocks []shape.Block, sounds *sound.Sound) {
+	if len(explodedBlocks) > 0 {
+		sounds.Click()
+		println("click")
+	}
+
+	if game.previousAge > info.ActiveAge {
+		sounds.Tick()
+		println("tick")
+	}
 }
 
 func handleFallingBlocks(explodedBlocks []shape.Block, sounds *sound.Sound, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, blockIDCounter int, fallingBlocks map[int]FallingBlock) {
@@ -206,17 +217,18 @@ func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, g
 }
 
 func createBackground(win *pixelgl.Window) *imdraw.IMDraw {
+	const lineWidth = 4
 	background := imdraw.New(nil)
 	background.Color = colornames.Gray
-	background.Push(pixel.V(margin, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin, margin))
-	background.Push(pixel.V(margin, margin))
-	background.Polygon(5)
+	background.Push(pixel.V(margin-lineWidth/2, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, win.Bounds().H()-margin))
+	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, margin))
+	background.Push(pixel.V(margin-lineWidth/2, margin))
+	background.Polygon(lineWidth / 2)
 
 	background.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
 	background.Push(pixel.V(win.Bounds().Center().X, 0))
-	background.Line(10)
+	background.Line(lineWidth * 2)
 	return background
 }
 

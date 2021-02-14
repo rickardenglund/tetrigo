@@ -4,7 +4,7 @@ FIND ?= find
 
 GO_FILES := $(shell $(FIND) . -name '*.go')
 
-build: build/tetris build/assets/blocks.png build/assets/sound/clock.mp3 build/assets/intuitive.ttf
+build: build/tetris build/assets/blocks.png build/assets/sound/clock.mp3 build/assets/sound/tick.mp3 build/assets/intuitive.ttf
 
 build/tetris: $(GO_FILES)
 	install -d build
@@ -15,6 +15,10 @@ build/assets/blocks.png: assets/blocks.png
 	cp $< $@
 
 build/assets/sound/clock.mp3: assets/sound/clock.mp3
+	install -d build/assets/sound
+	cp $< $@
+
+build/assets/sound/tick.mp3: assets/sound/tick.mp3
 	install -d build/assets/sound
 	cp $< $@
 
