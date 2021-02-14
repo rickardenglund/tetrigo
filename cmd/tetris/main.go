@@ -217,14 +217,14 @@ func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, g
 }
 
 func createBackground(win *pixelgl.Window) *imdraw.IMDraw {
-	const lineWidth = 4
+	const lineWidth = 8
 	background := imdraw.New(nil)
 	background.Color = colornames.Gray
-	background.Push(pixel.V(margin-lineWidth/2, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, win.Bounds().H()-margin))
-	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, margin))
-	background.Push(pixel.V(margin-lineWidth/2, margin))
-	background.Polygon(lineWidth / 2)
+	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, win.Bounds().H()-margin+lineWidth/2))
+	background.Push(pixel.V(win.Bounds().Center().X-margin+lineWidth/2, margin-lineWidth/2))
+	background.Push(pixel.V(margin-lineWidth/2, margin-lineWidth/2))
+	background.Push(pixel.V(margin-lineWidth/2, win.Bounds().H()-margin+lineWidth/2))
+	background.Line(lineWidth / 2)
 
 	background.Push(pixel.V(win.Bounds().Center().X, win.Bounds().H()))
 	background.Push(pixel.V(win.Bounds().Center().X, 0))

@@ -22,6 +22,10 @@ type Game struct {
 	explodedRows int
 	Results      []GameResult
 	paused       bool
+	startTime    time.Time
+	stopTime     time.Time
+	pausStart    time.Time
+	totalPause   time.Duration
 }
 
 type Info struct {
@@ -38,6 +42,7 @@ const highScoreFileName = "highscore.json"
 
 func New() Game {
 	g := Game{}
+	g.startTime = time.Now()
 	g.nextTick = time.Now().Add(g.tickLength())
 	g.blocks = map[shape.Pos]shape.Block{}
 	g.width = 10
@@ -91,6 +96,10 @@ func (g *Game) Left() {
 }
 
 func (g *Game) Rotate() {
+	if g.gameOver {
+		return
+	}
+
 	rotated := g.activeShape.Rotated()
 	for i := range rotated {
 		if g.collides(rotated[i].Pos) {
@@ -171,6 +180,7 @@ func (g *Game) collides(currentBlock shape.Pos) bool {
 }
 
 func (g *Game) IsGameOver() bool {
+	g.stopTime = time.Now()
 	return g.gameOver
 }
 
@@ -274,8 +284,11 @@ func (g *Game) tickLength() time.Duration {
 }
 
 type GameResult struct {
-	Score int
-	Level int
+	Score     int
+	Level     int
+	PlayTime  time.Duration
+	StartTime time.Time
+	StopTime  time.Time
 }
 
 type ByScore []GameResult
@@ -285,12 +298,18 @@ func (a ByScore) Less(i, j int) bool { return a[i].Score > a[j].Score }
 func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 func (g *Game) setGameOver() {
+	g.stopTime = time.Now()
 	g.gameOver = true
 
 	result := GameResult{
-		Score: g.score,
-		Level: g.Level(),
+		Score:     g.score,
+		Level:     g.Level(),
+		PlayTime:  g.stopTime.Sub(g.startTime) - g.totalPause,
+		StartTime: g.startTime,
+		StopTime:  g.stopTime,
 	}
+	fmt.Printf("playtime: %v\n", result.PlayTime)
+
 	g.Results = append(g.Results, result)
 	sort.Sort(ByScore(g.Results))
 	if len(g.Results) > 4 {
@@ -310,5 +329,11 @@ func (g *Game) setGameOver() {
 }
 
 func (g *Game) TogglePause() {
+	if !g.paused {
+		g.pausStart = time.Now()
+	} else {
+		g.totalPause += time.Since(g.pausStart)
+	}
+
 	g.paused = !g.paused
 }
