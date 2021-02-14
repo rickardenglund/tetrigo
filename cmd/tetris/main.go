@@ -6,6 +6,7 @@ import (
 	"Tetrigo/fonts"
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
+	"Tetrigo/util"
 	"fmt"
 	"image"
 	_ "image/png"
@@ -57,23 +58,19 @@ func run() {
 
 	background := createBackground(win)
 
-	nextImd := imdraw.New(nil)
-
 	font := fonts.GetFont()
 	atlas := text.NewAtlas(
 		font,
 		text.ASCII,
 	)
 
-	bcnt := 0
+	blockIDCounter := 0
 	fallingBlocks := map[int]FallingBlock{}
 
 	// init texts
 	textPos := pixel.V(win.Bounds().Center().X+margin, win.Bounds().H()-margin)
-	nextBlockPos := pixel.V(600, 400)
-	nextBlockTxt := text.New(nextBlockPos, atlas)
 
-	hud := hud.New(textPos, atlas, nextBlockPos.Add(pixel.V(0, -100)))
+	hud := hud.New(textPos, atlas)
 
 	game := tetris.New()
 	blockBatch := pixel.NewBatch(&pixel.TrianglesData{}, blockSheet)
@@ -91,26 +88,12 @@ func run() {
 
 		if len(explodedBlocks) > 0 {
 			sounds.Click()
-			for _, b := range explodedBlocks {
-				fb := FallingBlock{
-					pos:      getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, b.Pos),
-					rotation: 0,
-					kind:     b.Kind,
-					xs:       rand.Float64()*-2 + 1,
-					ys:       rand.Float64()*2 - 1,
-				}
-
-				bcnt++
-				fallingBlocks[bcnt] = fb
-			}
 		}
-
-		movaFallingBlocks(fallingBlocks)
+		handleFallingBlocks(explodedBlocks, sounds, win, gameInfo, boxWidth, blockIDCounter, fallingBlocks)
 
 		win.Clear(colornames.Black)
 		background.Draw(win)
-
-		hud.DrawHUD(win, game, gameInfo)
+		hud.DrawHUD(win, game, gameInfo, boxWidth, boxHeight)
 
 		blockBatch.Clear()
 		for _, v := range fallingBlocks {
@@ -123,14 +106,6 @@ func run() {
 		blocks := game.GetBlocks()
 		drawBlocks(blockBatch, blocks, win, gameInfo, boxWidth, boxHeight, boxScale, blockSprites)
 		blockBatch.Draw(win)
-
-		// Draw next block
-		ns := game.NextBlock()
-		drawNextBlock(nextBlockPos, boxWidth, nextBlockTxt, boxHeight, ns, nextImd)
-		nextImd.Draw(win)
-		nextBlockTxt.Clear()
-		fmt.Fprintf(nextBlockTxt, "Next")
-		nextBlockTxt.Draw(win, pixel.IM)
 
 		ctlState.handleInput(win, &game, &gameInfo)
 		if win.JustPressed(pixelgl.KeyEnter) {
@@ -147,6 +122,23 @@ func run() {
 		win.Update()
 	}
 
+}
+
+func handleFallingBlocks(explodedBlocks []shape.Block, sounds *sound.Sound, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, blockIDCounter int, fallingBlocks map[int]FallingBlock) {
+	for _, b := range explodedBlocks {
+		fb := FallingBlock{
+			pos:      getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, b.Pos),
+			rotation: 0,
+			kind:     b.Kind,
+			xs:       rand.Float64()*-2 + 1,
+			ys:       rand.Float64()*2 - 1,
+		}
+
+		blockIDCounter++
+		fallingBlocks[blockIDCounter] = fb
+	}
+
+	movaFallingBlocks(fallingBlocks)
 }
 
 func movaFallingBlocks(blocks map[int]FallingBlock) {
@@ -201,20 +193,6 @@ func (c *CtlState) handleInput(win *pixelgl.Window, game *tetris.Game, gi *tetri
 	}
 }
 
-func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.Text, boxHeight float64, ns shape.Shape, nextImd *imdraw.IMDraw) {
-	points := getShapePoints(nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*2.5)), boxWidth, boxHeight, ns.GetBlocks())
-	nextImd.Clear()
-	i := 0
-	nextImd.Color = colornames.Greenyellow
-	for i < len(points) {
-		for j := 0; j < 4; j++ {
-			nextImd.Push(points[i])
-			i++
-		}
-		nextImd.Polygon(3)
-	}
-}
-
 func drawBlocks(batch *pixel.Batch, blocks []shape.Block, win *pixelgl.Window, gameInfo tetris.Info, boxWidth float64, boxHeight float64, boxScale pixel.Vec, blockSprites []*pixel.Sprite) {
 	for i := range blocks {
 		pos := getBlockPos(win.Bounds(), gameInfo.Width, gameInfo.Height, boxWidth, blocks[i].Pos)
@@ -249,20 +227,6 @@ func getBoxScale(desiredWidth, desiredHeight float64, size pixel.Vec) pixel.Vec 
 	return pixel.V(xScale, yScale)
 }
 
-func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Block) []pixel.Vec {
-	res := make([]pixel.Vec, 0, len(blocks)*4)
-	for _, block := range blocks {
-		pv := pixel.Vec{X: float64(block.Pos.X) * boxWidth, Y: float64(block.Pos.Y) * boxHeight}.Add(base)
-		res = append(res,
-			pv,
-			pv.Add(pixel.V(boxWidth, 0)),
-			pv.Add(pixel.V(boxWidth, boxHeight)),
-			pv.Add(pixel.V(0, boxHeight)),
-		)
-	}
-	return res
-}
-
 const margin = 50
 
 func getBoxSize(gameWidth, gameHeight int, bounds pixel.Rect) (float64, float64) {
@@ -287,13 +251,9 @@ func getBlockPos(bounds pixel.Rect, gameWidth, gameHeight int, boxWidth float64,
 	boardRight := bounds.Center().X - margin
 
 	out := pixel.Vec{}
-	out.X = mapRange(float64(pos.X), 0, float64(gameWidth), boardLeft, boardRight)
-	out.Y = mapRange(float64(pos.Y), 0, float64(gameHeight)-2, boardBottom, boardTop-boxWidth)
+	out.X = util.MapRange(float64(pos.X), 0, float64(gameWidth), boardLeft, boardRight)
+	out.Y = util.MapRange(float64(pos.Y), 0, float64(gameHeight)-2, boardBottom, boardTop-boxWidth)
 	return out
-}
-
-func mapRange(input, inputStart, inputEnd, outputStart, outputEnd float64) float64 {
-	return ((input-inputStart)/(inputEnd-inputStart))*(outputEnd-outputStart) + outputStart
 }
 
 func main() {
