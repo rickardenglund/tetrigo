@@ -163,6 +163,7 @@ func (g *Game) GetBlocks() []shape.Block {
 	for _, block := range g.blocks {
 		res = append(res, block)
 	}
+
 	return append(res, g.activeShape.GetBlocks()...)
 }
 

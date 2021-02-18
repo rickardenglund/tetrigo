@@ -24,7 +24,7 @@ type Hud struct {
 }
 
 func New(pos pixel.Vec, atlas *text.Atlas) Hud {
-	nextBlockPos := pixel.V(600, 400)
+	nextBlockPos := pixel.V(pos.X+50, 400)
 	highScorePos := nextBlockPos.Add(pixel.V(0, -100))
 
 	hudTxt := text.New(pos, atlas)
@@ -36,7 +36,7 @@ func New(pos pixel.Vec, atlas *text.Atlas) Hud {
 	return Hud{txt: hudTxt, highScoreTxt: highScoreTxt, nextBlockTxt: nextBlockTxt, nextBlockPos: nextBlockPos, imd: imd}
 }
 
-func (h *Hud) DrawHUD(win *pixelgl.Window, game tetris.Game, gameInfo tetris.Info, boxWidth float64, boxHeight float64) {
+func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.Info, boxWidth float64, boxHeight float64) {
 	h.txt.Clear()
 	fmt.Fprintf(h.txt, "Score: %d\n", game.GetScore())
 	fmt.Fprintf(h.txt, "Level: %d", gameInfo.Level)
@@ -62,7 +62,7 @@ func (h *Hud) DrawHUD(win *pixelgl.Window, game tetris.Game, gameInfo tetris.Inf
 	h.nextBlockTxt.Draw(win, pixel.IM)
 }
 
-func printHighScore(highScoreTxt *text.Text, game tetris.Game) {
+func printHighScore(highScoreTxt *text.Text, game *tetris.Game) {
 	highScoreTxt.Clear()
 	fmt.Fprintf(highScoreTxt, "Score: ")
 	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
@@ -76,7 +76,9 @@ func printHighScore(highScoreTxt *text.Text, game tetris.Game) {
 }
 
 func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.Text, boxHeight float64, ns shape.Shape, nextImd *imdraw.IMDraw) {
-	points := getShapePoints(nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*2.5)), boxWidth, boxHeight, ns.GetBlocks())
+	points := getShapePoints(
+		nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*1.5)),
+		boxWidth, boxHeight, ns.GetBlocks())
 	nextImd.Clear()
 	i := 0
 	nextImd.Color = colornames.Greenyellow
