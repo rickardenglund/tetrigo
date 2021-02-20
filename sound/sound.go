@@ -25,12 +25,15 @@ type Sound struct {
 }
 
 func New() *Sound {
-	const clockPath = "assets/sound/clock.mp3"
-	const tickPath = "assets/sound/tick.mp3"
+	const (
+		clockPath = "assets/sound/clock.mp3"
+		tickPath  = "assets/sound/tick.mp3"
+	)
+
 	clockStreamer, clockFormat := readSound(clockPath)
 	tickStreamer, tickFormat := readSound(tickPath)
 
-	err := speaker.Init(clockFormat.SampleRate, clockFormat.SampleRate.N(time.Second/20))
+	err := speaker.Init(clockFormat.SampleRate, clockFormat.SampleRate.N(time.Second/20)) //nolint: gomnd // init magic
 	noErr(err)
 
 	return &Sound{
@@ -47,29 +50,14 @@ func readSound(path string) (beep.StreamSeekCloser, beep.Format) {
 
 	clockStreamer, clockFormat, err := mp3.Decode(fclock)
 	noErr(err)
+
 	return clockStreamer, clockFormat
 }
 
-//func (s *Sound) Background() chan bool {
-//done := make(chan bool)
-//speaker.Lock()
-//err := s.tetrisStreamer.Seek(0)
-//noErr(err)
-//speaker.Unlock()
-//
-//myseq := beep.Seq(s.tetrisStreamer, beep.Callback(func() {
-//	close(done)
-//}))
-//speaker.Play(myseq)
-//
-//return done
-//}
-
-type SoundTrack int
-
 func (s *Sound) Click() {
 	speaker.Lock()
-	err := s.clockStreamer.Seek(s.clockFormat.SampleRate.N(time.Millisecond * 170))
+	const clickTimeOffset = time.Millisecond * 170
+	err := s.clockStreamer.Seek(s.clockFormat.SampleRate.N(clickTimeOffset))
 	noErr(err)
 	speaker.Unlock()
 	speaker.Play(s.clockStreamer)
@@ -87,6 +75,7 @@ func (s *Sound) Tick() {
 		Volume:   -2,
 		Silent:   false,
 	}
+
 	speaker.Play(volume)
 }
 

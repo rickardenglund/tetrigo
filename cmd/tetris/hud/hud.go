@@ -3,7 +3,9 @@ package hud
 import (
 	"Tetrigo/tetris"
 	"Tetrigo/tetris/shape"
+	"Tetrigo/timestat"
 	"fmt"
+	"time"
 
 	"github.com/faiface/pixel/imdraw"
 	"golang.org/x/image/colornames"
@@ -24,7 +26,12 @@ type Hud struct {
 }
 
 func New(pos pixel.Vec, atlas *text.Atlas) Hud {
-	nextBlockPos := pixel.V(pos.X+50, 400)
+	const (
+		yOffset = 400
+		xOffset = 50
+	)
+
+	nextBlockPos := pixel.V(pos.X+xOffset, yOffset)
 	highScorePos := nextBlockPos.Add(pixel.V(0, -100))
 
 	hudTxt := text.New(pos, atlas)
@@ -36,10 +43,13 @@ func New(pos pixel.Vec, atlas *text.Atlas) Hud {
 	return Hud{txt: hudTxt, highScoreTxt: highScoreTxt, nextBlockTxt: nextBlockTxt, nextBlockPos: nextBlockPos, imd: imd}
 }
 
-func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.Info, boxWidth float64, boxHeight float64) {
-	h.txt.Clear()
+func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.Info,
+	boxWidth float64, boxHeight float64, buffer timestat.TimeStat) {
 	fmt.Fprintf(h.txt, "Score: %d\n", game.GetScore())
 	fmt.Fprintf(h.txt, "Level: %d", gameInfo.Level)
+
+	h.txt.Clear()
+
 	if game.IsGameOver() {
 		fmt.Fprintf(h.txt, "\nGame Over")
 	}
@@ -60,14 +70,44 @@ func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.In
 	h.nextBlockTxt.Clear()
 	fmt.Fprintf(h.nextBlockTxt, "Next")
 	h.nextBlockTxt.Draw(win, pixel.IM)
+
+	// Draw stats
+	const statMargin = 20
+	p := pixel.V(win.Bounds().Center().X+statMargin, statMargin)
+
+	h.imd.Clear()
+
+	for i, duration := range buffer.Values() {
+		if duration > time.Second/60 {
+			h.imd.Color = colornames.Red
+		} else if duration > time.Second/120 {
+			h.imd.Color = colornames.Yellow
+		} else {
+			h.imd.Color = colornames.Green
+		}
+
+		const (
+			heightScaling = 2
+			statLineWidth = 2
+		)
+
+		i *= 2
+		h.imd.Push(p.Add(pixel.V(float64(i), float64(duration.Milliseconds()*heightScaling))))
+		h.imd.Push(p.Add(pixel.V(float64(i), 0)))
+		h.imd.Line(statLineWidth)
+	}
+
+	h.imd.Draw(win)
 }
 
 func printHighScore(highScoreTxt *text.Text, game *tetris.Game) {
+	const widthBetweenRows = 50
+
 	highScoreTxt.Clear()
 	fmt.Fprintf(highScoreTxt, "Score: ")
-	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(50, 0))
+	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(widthBetweenRows, 0))
 	levelPosX := highScoreTxt.Dot.X
-	fmt.Fprintf(highScoreTxt, "Level: \n")
+
 	for _, result := range game.Results {
 		fmt.Fprintf(highScoreTxt, "%d", result.Score)
 		highScoreTxt.Dot.X = levelPosX
@@ -75,24 +115,33 @@ func printHighScore(highScoreTxt *text.Text, game *tetris.Game) {
 	}
 }
 
-func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.Text, boxHeight float64, ns shape.Shape, nextImd *imdraw.IMDraw) {
+func drawNextBlock(nextBlockPos pixel.Vec, boxWidth float64, nextBlockTxt *text.Text,
+	boxHeight float64, ns shape.Shape, nextImd *imdraw.IMDraw) {
+	const lineThickness = 3
+
 	points := getShapePoints(
-		nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*1.5)),
+		nextBlockPos.Add(pixel.V(boxWidth, nextBlockTxt.LineHeight*1.5)), // nolint: gomnd // offset
 		boxWidth, boxHeight, ns.GetBlocks())
+
 	nextImd.Clear()
-	i := 0
+
 	nextImd.Color = colornames.Greenyellow
+
+	i := 0
 	for i < len(points) {
 		for j := 0; j < 4; j++ {
 			nextImd.Push(points[i])
 			i++
 		}
-		nextImd.Polygon(3)
+		nextImd.Polygon(lineThickness)
 	}
 }
 
 func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.Block) []pixel.Vec {
-	res := make([]pixel.Vec, 0, len(blocks)*4)
+	const pointsPerBlock = 4
+
+	res := make([]pixel.Vec, 0, len(blocks)*pointsPerBlock)
+
 	for _, block := range blocks {
 		pv := pixel.Vec{X: float64(block.Pos.X) * boxWidth, Y: float64(block.Pos.Y) * boxHeight}.Add(base)
 		res = append(res,
@@ -102,5 +151,6 @@ func getShapePoints(base pixel.Vec, boxWidth, boxHeight float64, blocks []shape.
 			pv.Add(pixel.V(0, boxHeight)),
 		)
 	}
+
 	return res
 }

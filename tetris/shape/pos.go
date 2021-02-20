@@ -1,6 +1,5 @@
 package shape
 
-
 type Pos struct {
 	X, Y int
 }

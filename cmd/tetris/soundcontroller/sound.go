@@ -1,4 +1,4 @@
-package soundController
+package soundcontroller
 
 import (
 	"Tetrigo/sound"

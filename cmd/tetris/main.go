@@ -2,9 +2,11 @@ package main
 
 import (
 	"Tetrigo/cmd/tetris/renderer"
-	"Tetrigo/cmd/tetris/soundController"
+	"Tetrigo/cmd/tetris/soundcontroller"
 	"Tetrigo/sound"
 	"Tetrigo/tetris"
+	"Tetrigo/timestat"
+	"flag"
 	"fmt"
 	_ "image/png"
 	"math/rand"
@@ -19,16 +21,17 @@ type CtlState struct {
 	previousAge int
 }
 
-func run() {
+func run(vsync bool) {
 	sounds := sound.New()
 	defer sounds.Close()
 
 	windowCfg := pixelgl.WindowConfig{
 		Title:     "TetriGo",
 		Bounds:    pixel.R(0, 0, 1024, 768),
-		VSync:     true,
+		VSync:     vsync,
 		Resizable: true,
 	}
+
 	win, err := pixelgl.NewWindow(windowCfg)
 	if err != nil {
 		panic(err)
@@ -39,18 +42,22 @@ func run() {
 	game := tetris.New()
 	ctlState := CtlState{}
 
+	const timeMeasurementsToStore = 240
+
 	frames := 0
 	ticker := time.NewTicker(time.Second)
+	timeBuffer := timestat.New(timeMeasurementsToStore)
 
 	for !win.Closed() {
 		startRender := time.Now()
 		explodedBlocks := game.Tick(startRender)
 		gameInfo := game.GetInfo()
 
-		soundController.ControlSound(ctlState.previousAge > gameInfo.ActiveAge, explodedBlocks, sounds)
+		soundcontroller.ControlSound(ctlState.previousAge > gameInfo.ActiveAge, explodedBlocks, sounds)
 
-		r.Render(win, gameInfo, &game, explodedBlocks)
+		r.Render(win, gameInfo, &game, explodedBlocks, timeBuffer)
 		ctlState.handleInput(win, &game, &gameInfo)
+
 		if win.JustPressed(pixelgl.KeyEnter) {
 			game = tetris.New()
 		}
@@ -61,16 +68,20 @@ func run() {
 			frames = 0
 		default:
 		}
+
 		frames++
+
+		timeBuffer.Add(time.Since(startRender))
+
 		win.Update()
 	}
-
 }
 
 func (c *CtlState) handleInput(win *pixelgl.Window, game *tetris.Game, gi *tetris.Info) {
 	if win.JustPressed(pixelgl.KeyDown) || win.JustPressed(pixelgl.KeySpace) {
 		c.falling = true
 	}
+
 	if gi.ActiveAge < c.previousAge {
 		c.falling = false
 	}
@@ -84,18 +95,26 @@ func (c *CtlState) handleInput(win *pixelgl.Window, game *tetris.Game, gi *tetri
 	if win.JustPressed(pixelgl.KeyLeft) {
 		game.Left()
 	}
+
 	if win.JustPressed(pixelgl.KeyRight) {
 		game.Right()
 	}
+
 	if win.JustPressed(pixelgl.KeyUp) {
 		game.Rotate()
 	}
+
 	if win.JustPressed(pixelgl.KeyP) {
 		game.TogglePause()
 	}
 }
 
 func main() {
+	vsync := flag.Bool("vsync", true, "enable vsync")
+	flag.Parse()
+
 	rand.Seed(time.Now().Unix())
-	pixelgl.Run(run)
+	pixelgl.Run(func() {
+		run(*vsync)
+	})
 }

@@ -46,9 +46,11 @@ func main() {
 		for {
 			<-seconds
 			speaker.Lock()
-			clockSteamer.Seek(clockFormat.SampleRate.N(time.Millisecond * 170))
+			err := clockSteamer.Seek(clockFormat.SampleRate.N(time.Millisecond * 170))
+			noErr(err)
 			speaker.Unlock()
 			speaker.Play(clockSteamer)
+
 			//fmt.Printf("clock: %v\n", clockSteamer)
 			fmt.Printf("clicked\n")
 		}

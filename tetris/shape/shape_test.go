@@ -22,9 +22,4 @@ func TestShape_Rotate(t *testing.T) {
 	s.Rotate()
 
 	require.ElementsMatchf(t, s.GetBlocks(), []Pos{{4, 5}, {5, 5}, {6, 5}, {5, 4}}, "content does not match")
-
-	//	#
-	//	#
-	//	#
-	//	#
 }

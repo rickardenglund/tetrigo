@@ -18,8 +18,10 @@ func (s *Shape) GetBlocks() []Block {
 
 func (s *Shape) getBlocks(rotation int) []Block {
 	blocks := make([]Block, 0, len(tetronimos[s.kind]))
+
 	for _, p := range tetronimos[s.kind][rotation] {
 		newPos := p.Add(s.pos)
+
 		blocks = append(blocks, Block{Pos: newPos, Kind: s.kind})
 	}
 
@@ -43,7 +45,7 @@ func (s *Shape) Rotate() {
 }
 
 func (s *Shape) Rotated() []Block {
-	return s.getBlocks((s.rotation + 1) % 4)
+	return s.getBlocks((s.rotation + 1) % len(tetronimos[0]))
 }
 
 func GetShape(kind int, pos Pos) Shape {

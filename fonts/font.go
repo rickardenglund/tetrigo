@@ -1,10 +1,11 @@
 package fonts
 
 import (
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
 	"io/ioutil"
 	"os"
+
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 )
 
 func GetFont() font.Face {
@@ -14,21 +15,20 @@ func GetFont() font.Face {
 	}
 	defer f.Close()
 
-	//fontbytes := []byte{}
-	//_, err = f.Read(fontbytes)
 	fontbytes, err := ioutil.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}
 
-	font, err := truetype.Parse(fontbytes)
+	myFont, err := truetype.Parse(fontbytes)
 	if err != nil {
 		panic(err)
 	}
 
-	face := truetype.NewFace(font, &truetype.Options{
+	face := truetype.NewFace(myFont, &truetype.Options{
 		Size:              50,
 		GlyphCacheEntries: 1,
 	})
+
 	return face
 }

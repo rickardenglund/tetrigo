@@ -47,19 +47,22 @@ func New() Game {
 	g.blocks = map[shape.Pos]shape.Block{}
 	g.width = 10
 	g.height = 20
-	g.nextKind = rand.Int()
+	g.nextKind = rand.Int() //nolint: gosec // ignore weak rand
 	g.newBlock()
 
 	if f, err := os.Open(highScoreFileName); err == nil {
 		defer f.Close()
 
 		var results []GameResult
+
 		err = json.NewDecoder(f).Decode(&results)
 		if err != nil {
 			fmt.Printf("Failed to read highscores: %v\n", err)
 		}
+
 		g.Results = results
 	}
+
 	return g
 }
 
@@ -73,7 +76,8 @@ func (g *Game) Right() {
 	}
 
 	for i := range g.activeShape.GetBlocks() {
-		if g.activeShape.GetBlocks()[i].Pos.X >= g.width-1 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X + 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
+		if g.activeShape.GetBlocks()[i].Pos.X >= g.width-1 ||
+			g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X + 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
 		}
 	}
@@ -87,7 +91,8 @@ func (g *Game) Left() {
 	}
 
 	for i := range g.activeShape.GetBlocks() {
-		if g.activeShape.GetBlocks()[i].Pos.X <= 0 || g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X - 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
+		if g.activeShape.GetBlocks()[i].Pos.X <= 0 ||
+			g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X - 1, Y: g.activeShape.GetBlocks()[i].Pos.Y}) {
 			return
 		}
 	}
@@ -115,13 +120,16 @@ func (g *Game) Tick(currentTime time.Time) []shape.Block {
 		g.nextTick = time.Now().Add(g.tickLength())
 		return nil
 	}
+
 	if !currentTime.After(g.nextTick) || g.gameOver {
 		return nil
 	}
 
-	isBlocked := g.activeIsBlocked()
+	var (
+		isBlocked      = g.activeIsBlocked()
+		explodedBlocks []shape.Block
+	)
 
-	var explodedBlocks []shape.Block
 	if isBlocked {
 		for i := range g.activeShape.GetBlocks() {
 			b := g.activeShape.GetBlocks()[i]
@@ -145,12 +153,14 @@ func (g *Game) Tick(currentTime time.Time) []shape.Block {
 
 func (g *Game) activeIsBlocked() bool {
 	isBlocked := false
+
 	for i := range g.activeShape.GetBlocks() {
 		if g.collides(shape.Pos{X: g.activeShape.GetBlocks()[i].Pos.X, Y: g.activeShape.GetBlocks()[i].Pos.Y - 1}) {
 			isBlocked = true
 			break
 		}
 	}
+
 	return isBlocked
 }
 
@@ -177,6 +187,7 @@ func (g *Game) collides(currentBlock shape.Pos) bool {
 	}
 
 	_, exists := g.blocks[currentBlock]
+
 	return exists
 }
 
@@ -199,8 +210,10 @@ func (g *Game) GetInfo() Info {
 }
 
 func (g *Game) checkForFullLines() []shape.Block {
-	rows := map[int]map[int]bool{}
-	var explodedBlocks []shape.Block
+	var (
+		rows           = map[int]map[int]bool{}
+		explodedBlocks []shape.Block
+	)
 
 	for pos := range g.blocks {
 		if _, exists := rows[pos.Y]; !exists {
@@ -211,9 +224,11 @@ func (g *Game) checkForFullLines() []shape.Block {
 	}
 
 	var fullRows []int
+
 	for row := range rows {
 		if len(rows[row]) == g.width {
 			fullRows = append(fullRows, row)
+
 			for x := 0; x < g.width; x++ {
 				explodedBlocks = append(explodedBlocks, g.blocks[shape.Pos{X: x, Y: row}])
 			}
@@ -229,6 +244,7 @@ func (g *Game) checkForFullLines() []shape.Block {
 	}
 
 	sort.Ints(fullRows)
+
 	for i := len(fullRows) - 1; i >= 0; i-- {
 		fullRow := fullRows[i]
 
@@ -236,13 +252,15 @@ func (g *Game) checkForFullLines() []shape.Block {
 			for x := 0; x < g.width; x++ {
 				p := shape.Pos{X: x, Y: y}
 				b, exists := g.blocks[p]
+
 				if exists {
 					delete(g.blocks, p)
+
 					newPos := shape.Pos{X: p.X, Y: p.Y - 1}
+
 					g.blocks[newPos] = shape.Block{Pos: newPos, Kind: b.Kind}
 				}
 			}
-
 		}
 	}
 
@@ -264,7 +282,7 @@ func (g *Game) newBlock() {
 		g.setGameOver()
 	}
 
-	g.nextKind = rand.Int()
+	g.nextKind = rand.Int() //nolint: gosec // ignore weak rand
 }
 
 func (g *Game) NextBlock() shape.Shape {
@@ -313,8 +331,10 @@ func (g *Game) setGameOver() {
 
 	g.Results = append(g.Results, result)
 	sort.Sort(ByScore(g.Results))
-	if len(g.Results) > 4 {
-		g.Results = g.Results[:5]
+
+	const resultsToStore = 5
+	if len(g.Results) > resultsToStore-1 {
+		g.Results = g.Results[:resultsToStore]
 	}
 
 	f, err := os.OpenFile(highScoreFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
