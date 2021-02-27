@@ -47,11 +47,12 @@ func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.In
 	boxWidth float64, boxHeight float64, buffer timestat.TimeStat) {
 	fmt.Fprintf(h.txt, "Score: %d\n", game.GetScore())
 	fmt.Fprintf(h.txt, "Level: %d", gameInfo.Level)
+	h.txt.Draw(win, pixel.IM)
 
 	h.txt.Clear()
 
 	if game.IsGameOver() {
-		fmt.Fprintf(h.txt, "\nGame Over")
+		fmt.Fprintf(h.txt, "\n\nGame Over")
 	}
 
 	if gameInfo.Paused {
@@ -101,12 +102,14 @@ func (h *Hud) DrawHUD(win *pixelgl.Window, game *tetris.Game, gameInfo tetris.In
 }
 
 func printHighScore(highScoreTxt *text.Text, game *tetris.Game) {
-	const widthBetweenRows = 50
+	const widthBetweenRows = 250
 
 	highScoreTxt.Clear()
 	fmt.Fprintf(highScoreTxt, "Score: ")
 	highScoreTxt.Dot = highScoreTxt.Dot.Add(pixel.V(widthBetweenRows, 0))
-	levelPosX := highScoreTxt.Dot.X
+	highScoreTxt.Dot.X = highScoreTxt.Orig.X + widthBetweenRows
+	fmt.Fprintf(highScoreTxt, "Level: \n")
+	levelPosX := highScoreTxt.Dot.X + widthBetweenRows
 
 	for _, result := range game.Results {
 		fmt.Fprintf(highScoreTxt, "%d", result.Score)
