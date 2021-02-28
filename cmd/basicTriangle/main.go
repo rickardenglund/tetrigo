@@ -55,12 +55,11 @@ func main() {
 	defer win.Destroy()
 
 	win.MakeContextCurrent()
-	err = gl.Init()
-	// GLAD?
-	win.SetFramebufferSizeCallback(sizeCallback)
-	gl.Viewport(0, 0, int32(width), int32(height))
 
+	err = gl.Init()
 	noError(err)
+
+	gl.Viewport(0, 0, int32(width), int32(height))
 
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	fmt.Printf("GL version: %v\n", version)
@@ -102,10 +101,6 @@ func main() {
 		win.SwapBuffers()
 		glfw.PollEvents()
 	}
-}
-
-func sizeCallback(win *glfw.Window, w int, h int) {
-	gl.Viewport(0, 0, int32(w), int32(h))
 }
 
 func newProgram(vertexShaderSource, fragmentShaderSource string) (uint32, error) {

@@ -19,7 +19,7 @@ func main() {
 	defer r.Cleanup()
 
 	r.SetShader()
-	r.SetTriangle(0, 0, 1)
+	r.SetTriangle(0, 0, 2)
 
 	for !r.ShouldClose() {
 		r.Draw()

@@ -31,7 +31,7 @@ func New() Renderer {
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
 
-	//nolint: gocritic // no
+	// nolint: gocritic // no
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	gl.ClearColor(0.5, 0.5, 0.5, 1)
@@ -61,7 +61,6 @@ func (r *Renderer) SetTriangle(x, y, size float32) {
 		x + w, y - w, 0,
 		x, y + w, 0,
 	}
-
 	const floatSize = 4
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
@@ -77,7 +76,6 @@ func (r *Renderer) Draw() {
 
 	r.shader.Use()
 	gl.BindVertexArray(r.vao)
-	gl.BindBuffer(gl.VERTEX_ARRAY, r.vbo)
 
 	gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
@@ -134,11 +132,11 @@ func (r *Renderer) Cleanup() {
 
 var vertexshader = `
 #version 330 core
-layout (location = 0) in vec2 aPos;
+layout (location = 0) in vec3 aPos;
 
 void main()
 {
-	gl_Position = vec4(0,0, 0, 1);
+	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1);
 }` + "\x00"
 
 var fragshaderyellow = `
