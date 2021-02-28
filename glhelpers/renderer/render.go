@@ -12,8 +12,7 @@ import (
 )
 
 type Renderer struct {
-	shader program.Shader
-	// triangleVertices []float32
+	shader   program.Shader
 	vao      uint32
 	vbo      uint32
 	win      *glfw.Window
