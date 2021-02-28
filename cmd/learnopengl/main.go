@@ -130,12 +130,12 @@ func main() {
 	gl.DepthFunc(gl.LESS)
 	gl.ClearColor(0.5, 0.5, 0.5, 0)
 
-	t, err := textures.New("/Users/rickard/code/Tetrigo/glhelpers/textures/brick.png")
+	t, err := textures.New("/Users/rickardenglund/code/tetrigo/cmd/learnopengl/butterfly.png")
 	if err != nil {
 		panic(err)
 	}
 
-	t2, err := textures.New("/Users/rickard/code/Tetrigo/glhelpers/textures/smile.png")
+	t2, err := textures.New("/Users/rickardenglund/code/tetrigo/cmd/learnopengl/butterfly.png")
 	if err != nil {
 		panic(err)
 	}
@@ -268,6 +268,8 @@ uniform sampler2D ourTexture2;
 
 void main()
 {
-//	FragColor = mix(texture(ourTexture2, texCoord), texture(ourTexture, texCoord), mouse.x);
-	FragColor = mix(texture(ourTexture2,vec2(texCoord.x, texCoord.y)), vertexColor, 0.5);
+	FragColor = texture(ourTexture2,vec2(texCoord.x, texCoord.y));
+	if (FragColor.x == 0 && FragColor.y == 0) {
+		FragColor = vec4(0.1,0.5,0.5,1);
+	}
 } ` + "\x00"

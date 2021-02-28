@@ -1,16 +1,17 @@
 package main
 
 import (
-	"Tetrigo/cmd/tetris/renderer"
-	"Tetrigo/cmd/tetris/soundcontroller"
-	"Tetrigo/sound"
-	"Tetrigo/tetris"
-	"Tetrigo/timestat"
 	"flag"
 	"fmt"
 	_ "image/png"
 	"math/rand"
 	"time"
+
+	"Tetrigo/cmd/tetris/renderer"
+	"Tetrigo/cmd/tetris/soundcontroller"
+	"Tetrigo/sound"
+	"Tetrigo/tetris"
+	"Tetrigo/timestat"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
