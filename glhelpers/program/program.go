@@ -72,6 +72,7 @@ func New(vertexShaderSource, fragmentShaderSource string) (Shader, error) {
 }
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
+	source += "\x00"
 	shader := gl.CreateShader(shaderType)
 
 	csources, free := gl.Strs(source)

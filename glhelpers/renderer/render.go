@@ -1,8 +1,10 @@
 package renderer
 
 import (
-	"Tetrigo/glhelpers/program"
+	_ "embed" // nolint: golint
 	"fmt"
+
+	"Tetrigo/glhelpers/program"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 
@@ -12,9 +14,8 @@ import (
 type Renderer struct {
 	shader program.Shader
 	// triangleVertices []float32
-	vao uint32
-	vbo uint32
-	// ebo              uint32
+	vao      uint32
+	vbo      uint32
 	win      *glfw.Window
 	vertices []float32
 }
@@ -40,7 +41,7 @@ func New() Renderer {
 }
 
 func (r *Renderer) SetShader() {
-	s, err := program.New(vertexshader, fragshaderyellow)
+	s, err := program.New(vertexShader, fragShader)
 	if err != nil {
 		panic(err)
 	}
@@ -61,6 +62,7 @@ func (r *Renderer) SetTriangle(x, y, size float32) {
 		x + w, y - w, 0,
 		x, y + w, 0,
 	}
+
 	const floatSize = 4
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
@@ -130,20 +132,8 @@ func (r *Renderer) Cleanup() {
 	glfw.Terminate()
 }
 
-var vertexshader = `
-#version 330 core
-layout (location = 0) in vec3 aPos;
+//go:embed shaders/vertexShader.glsl
+var vertexShader string
 
-void main()
-{
-	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1);
-}` + "\x00"
-
-var fragshaderyellow = `
-#version 330 core
-out vec4 FragColor;
-
-void main()
-{
-	FragColor = vec4(1,1,0,1);
-} ` + "\x00"
+//go:embed shaders/fragmentShader.glsl
+var fragShader string
