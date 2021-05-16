@@ -1,15 +1,16 @@
 package renderer
 
 import (
-	"Tetrigo/cmd/tetris/hud"
-	"Tetrigo/cmd/tetris/sprites"
-	"Tetrigo/fonts"
-	"Tetrigo/tetris"
-	"Tetrigo/tetris/shape"
-	"Tetrigo/timestat"
 	"image/color"
 	"math"
 	"math/rand"
+
+	"github.com/rickardenglund/tetrigo/cmd/tetris/hud"
+	"github.com/rickardenglund/tetrigo/cmd/tetris/sprites"
+	"github.com/rickardenglund/tetrigo/fonts"
+	"github.com/rickardenglund/tetrigo/tetris"
+	"github.com/rickardenglund/tetrigo/tetris/shape"
+	"github.com/rickardenglund/tetrigo/timestat"
 
 	"github.com/faiface/pixel/text"
 

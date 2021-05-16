@@ -4,7 +4,7 @@ import (
 	_ "embed" // nolint: golint
 	"fmt"
 
-	"Tetrigo/glhelpers/program"
+	"github.com/rickardenglund/tetrigo/glhelpers/program"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 

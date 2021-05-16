@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"runtime"
 
-	"Tetrigo/glhelpers/arraybuffer"
-	"Tetrigo/glhelpers/camera"
-	"Tetrigo/glhelpers/program"
-	"Tetrigo/glhelpers/textures"
+	"github.com/rickardenglund/tetrigo/glhelpers/arraybuffer"
+	"github.com/rickardenglund/tetrigo/glhelpers/camera"
+	"github.com/rickardenglund/tetrigo/glhelpers/program"
+	"github.com/rickardenglund/tetrigo/glhelpers/textures"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"

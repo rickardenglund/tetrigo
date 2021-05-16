@@ -1,9 +1,10 @@
 package timestat_test
 
 import (
-	"Tetrigo/timestat"
 	"testing"
 	"time"
+
+	"github.com/rickardenglund/tetrigo/timestat"
 
 	"github.com/stretchr/testify/require"
 )

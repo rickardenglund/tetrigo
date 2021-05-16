@@ -1,8 +1,8 @@
 package soundcontroller
 
 import (
-	"Tetrigo/sound"
-	"Tetrigo/tetris/shape"
+	"github.com/rickardenglund/tetrigo/sound"
+	"github.com/rickardenglund/tetrigo/tetris/shape"
 )
 
 func ControlSound(newBlock bool, explodedBlocks []shape.Block, sounds *sound.Sound) {

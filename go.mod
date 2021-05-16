@@ -1,4 +1,4 @@
-module Tetrigo
+module github.com/rickardenglund/tetrigo
 
 go 1.16
 

@@ -1,11 +1,12 @@
 package hud
 
 import (
-	"Tetrigo/tetris"
-	"Tetrigo/tetris/shape"
-	"Tetrigo/timestat"
 	"fmt"
 	"time"
+
+	"github.com/rickardenglund/tetrigo/tetris"
+	"github.com/rickardenglund/tetrigo/tetris/shape"
+	"github.com/rickardenglund/tetrigo/timestat"
 
 	"github.com/faiface/pixel/imdraw"
 	"golang.org/x/image/colornames"

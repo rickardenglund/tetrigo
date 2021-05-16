@@ -1,8 +1,9 @@
 package camera
 
 import (
-	"Tetrigo/glhelpers/keyhandler"
 	"math"
+
+	"github.com/rickardenglund/tetrigo/glhelpers/keyhandler"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"

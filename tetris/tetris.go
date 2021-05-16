@@ -1,13 +1,14 @@
 package tetris
 
 import (
-	"Tetrigo/tetris/shape"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/rickardenglund/tetrigo/tetris/shape"
 )
 
 type Game struct {

@@ -7,11 +7,11 @@ import (
 	"math/rand"
 	"time"
 
-	"Tetrigo/cmd/tetris/renderer"
-	"Tetrigo/cmd/tetris/soundcontroller"
-	"Tetrigo/sound"
-	"Tetrigo/tetris"
-	"Tetrigo/timestat"
+	"github.com/rickardenglund/tetrigo/cmd/tetris/renderer"
+	"github.com/rickardenglund/tetrigo/cmd/tetris/soundcontroller"
+	"github.com/rickardenglund/tetrigo/sound"
+	"github.com/rickardenglund/tetrigo/tetris"
+	"github.com/rickardenglund/tetrigo/timestat"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"

@@ -3,7 +3,7 @@ package main
 import (
 	"runtime"
 
-	"Tetrigo/glhelpers/renderer"
+	"github.com/rickardenglund/tetrigo/glhelpers/renderer"
 )
 
 func init() {
